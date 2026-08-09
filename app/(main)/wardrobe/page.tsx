@@ -1,18 +1,22 @@
-"use client";
-
-import { useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
-import { mockWardrobe } from "@/lib/mock-wardrobe";
-import { ClothingCategory } from "@/types/clothing";
-import Chip from "@/components/Chip";
+import Link from "next/link";
+import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 import ItemThumb from "@/components/ItemThumb";
+import { ClothingItem } from "@/types/clothing";
 
-const CATS: ("All" | ClothingCategory)[] = ["All", "top", "bottom", "shoes", "accessory"];
-const LABELS: Record<string, string> = { All: "All", top: "Tops", bottom: "Bottoms", shoes: "Shoes", accessory: "Accessories" };
+export default async function WardrobePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export default function WardrobePage() {
-  const [filter, setFilter] = useState<"All" | ClothingCategory>("All");
-  const filtered = filter === "All" ? mockWardrobe : mockWardrobe.filter((i) => i.category === filter);
+  const { data: wardrobe } = await supabase
+    .from("clothing_items")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("created_at", { ascending: false });
+
+  const items = (wardrobe ?? []) as ClothingItem[];
 
   return (
     <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
@@ -26,33 +30,47 @@ export default function WardrobePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap mb-4">
-        {CATS.map((c) => (
-          <Chip key={c} label={LABELS[c]} active={filter === c} onClick={() => setFilter(c)} />
-        ))}
-      </div>
+      <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>{items.length} items</p>
 
-      <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>
-        {filtered.length} items
-      </p>
-
-      <div className="grid grid-cols-3 gap-3">
-        {filtered.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-xl p-2.5 border"
-            style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
-          >
-            <ItemThumb category={item.category} color={item.primary_color} size={64} />
-            <p className="text-xs mt-2" style={{ fontWeight: 500 }}>
-              {item.name}
-            </p>
-            <p className="text-[11px] mt-0.5 capitalize" style={{ color: "var(--color-text-muted)" }}>
-              {item.style[0]}
-            </p>
-          </div>
-        ))}
-      </div>
+      {items.length === 0 ? (
+        <div
+          className="rounded-2xl p-8 text-center border"
+          style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
+        >
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>
+            No clothes added yet
+          </p>
+          <Link href="/add" className="btn-chrome inline-flex items-center gap-2 px-4 py-2 text-xs">
+            <Plus size={14} /> ADD CLOTHING
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl p-2.5 border"
+              style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
+            >
+              {item.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-full aspect-square object-cover rounded-lg"
+                  style={{ border: "1px solid var(--color-border)" }}
+                />
+              ) : (
+                <ItemThumb category={item.category} color={item.primary_color} size={64} />
+              )}
+              <p className="text-xs mt-2" style={{ fontWeight: 500 }}>{item.name}</p>
+              <p className="text-[11px] mt-0.5 capitalize" style={{ color: "var(--color-text-muted)" }}>
+                {item.style?.[0] ?? item.primary_color}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
