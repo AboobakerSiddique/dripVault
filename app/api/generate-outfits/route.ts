@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
   // Cheap programmatic filter + score pass over the real wardrobe.
   // Plug an AI re-rank/explain call in here later (brief section 12) once
   // the candidate list is small - never send the whole wardrobe to an AI call.
+  // filters.lockedItemId (if present) pins that item into its category slot -
+  // see generateOutfits() for how the rest of the outfit is built around it.
   const outfits = generateOutfits(wardrobe ?? [], filters, 10);
 
   return NextResponse.json({ outfits });

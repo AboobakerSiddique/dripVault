@@ -48,4 +48,7 @@ export interface OutfitFilters {
   fitPreference?: string;
   avoidRecentlyWorn?: boolean;
   useOnlyUnworn?: boolean;
+  /** id of a clothing_items row the user picked to build the outfit around - that
+   *  item is pinned into its category slot rather than searched over. */
+  lockedItemId?: string;
 }

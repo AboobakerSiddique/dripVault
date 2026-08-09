@@ -26,29 +26,65 @@ function formalityFit(items: ClothingItem[]): number {
   return Math.max(50, 96 - spread * 10);
 }
 
+/**
+ * Item names are already saved as "{color} {sub_category}" (see /add), so
+ * blindly prepending the color again in prose produces "black black tee".
+ * This only prepends color when the name doesn't already mention it -
+ * doesn't touch the stored name itself, display layer only.
+ */
+function describeItem(item: ClothingItem): string {
+  const color = item.primary_color?.toLowerCase().trim();
+  const name = item.name?.trim();
+  if (!name) return "item";
+  if (!color || name.toLowerCase().includes(color)) return name.toLowerCase();
+  return `${color} ${name}`.toLowerCase();
+}
+
 function explain(o: Omit<GeneratedOutfit, "explanation">, filters: OutfitFilters): string {
-  const palette = o.colorScore >= 88 ? "a balanced neutral palette" : "a contrast-driven palette";
-  const occasion = filters.occasion ?? "everyday wear";
-  const weather = filters.weather ?? "current";
-  return `The ${o.top.primary_color.toLowerCase()} ${o.top.name.toLowerCase()} pairs with the ${o.bottom.primary_color.toLowerCase()} ${o.bottom.name.toLowerCase()} for ${palette}, and the ${o.shoes.name.toLowerCase()} keeps it grounded for ${occasion.toLowerCase()} in ${weather.toLowerCase()} weather.`;
+  const topDesc = describeItem(o.top);
+  const bottomDesc = describeItem(o.bottom);
+  const shoesDesc = describeItem(o.shoes);
+  const occasion = (filters.occasion ?? "everyday wear").toLowerCase();
+
+  const palette =
+    o.colorScore >= 88
+      ? "a clean, cohesive palette"
+      : "just enough contrast to stay interesting";
+
+  return `The ${topDesc} pairs with the ${bottomDesc} for ${palette}, while the ${shoesDesc} keeps it grounded for ${occasion}.`;
 }
 
 /**
  * Programmatic filter + score pass, matching brief section 44-45:
  * candidate generation -> scoring -> top N, BEFORE any AI ranking call.
  * Keep this cheap; call an AI model only to re-rank/explain the survivors.
+ *
+ * If filters.lockedItemId is set, that item is pinned into its category
+ * slot (never swapped out) and the rest of the outfit is built around it.
  */
 export function generateOutfits(
   wardrobe: ClothingItem[],
   filters: OutfitFilters,
   limit = 5
 ): GeneratedOutfit[] {
-  const tops = wardrobe.filter((i) => i.category === "top");
-  const bottoms = wardrobe.filter((i) => i.category === "bottom");
-  const shoes = wardrobe.filter((i) => i.category === "shoes");
+  const lockedItem = filters.lockedItemId
+    ? wardrobe.find((i) => i.id === filters.lockedItemId)
+    : undefined;
+
+  let tops = wardrobe.filter((i) => i.category === "top");
+  let bottoms = wardrobe.filter((i) => i.category === "bottom");
+  let shoes = wardrobe.filter((i) => i.category === "shoes");
   const accessories = wardrobe.filter((i) =>
     ["accessory", "bag", "outerwear"].includes(i.category)
   );
+  let forcedAccessory: ClothingItem | undefined;
+
+  if (lockedItem) {
+    if (lockedItem.category === "top") tops = [lockedItem];
+    else if (lockedItem.category === "bottom") bottoms = [lockedItem];
+    else if (lockedItem.category === "shoes") shoes = [lockedItem];
+    else forcedAccessory = lockedItem; // accessory / bag / outerwear
+  }
 
   const candidates: GeneratedOutfit[] = [];
 
@@ -63,9 +99,10 @@ export function generateOutfits(
         );
         const styleScore = styleOverlap(items, filters.aesthetic);
         const formalityScore = formalityFit(items);
-        const accessory = accessories.find((a) =>
-          a.style.some((s) => items.some((it) => it.style.includes(s)))
-        ) ?? accessories[0];
+        const accessory =
+          forcedAccessory ??
+          accessories.find((a) => a.style.some((s) => items.some((it) => it.style.includes(s)))) ??
+          accessories[0];
 
         const overall = Math.round(
           colorScore * 0.35 + styleScore * 0.35 + formalityScore * 0.3

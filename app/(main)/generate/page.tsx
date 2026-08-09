@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Star } from "lucide-react";
-import { GeneratedOutfit } from "@/types/clothing";
+import { useEffect, useState } from "react";
+import { Lock, Sparkles, Star, X } from "lucide-react";
+import { ClothingItem, GeneratedOutfit } from "@/types/clothing";
 import Chip from "@/components/Chip";
-import ItemThumb from "@/components/ItemThumb";
+import ClothingThumb from "@/components/ClothingThumb";
+
+const AESTHETICS = [
+  "minimal", "streetwear", "smart casual", "old money",
+  "vintage", "y2k", "monochrome", "formal", "athletic", "korean",
+];
 
 export default function GeneratePage() {
   const [occasion, setOccasion] = useState("Casual");
@@ -14,6 +19,18 @@ export default function GeneratePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [mode, setMode] = useState<"free" | "locked">("free");
+  const [wardrobe, setWardrobe] = useState<ClothingItem[] | null>(null);
+  const [lockedItem, setLockedItem] = useState<ClothingItem | null>(null);
+  const wardrobeLoading = mode === "locked" && wardrobe === null;
+
+  useEffect(() => {
+    if (mode !== "locked" || wardrobe) return;
+    fetch("/api/wardrobe")
+      .then((r) => r.json())
+      .then((data) => setWardrobe(data.items ?? []));
+  }, [mode, wardrobe]);
+
   const run = async () => {
     setLoading(true);
     setError(null);
@@ -21,7 +38,12 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate-outfits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ occasion, aesthetic, weather }),
+        body: JSON.stringify({
+          occasion,
+          aesthetic,
+          weather,
+          lockedItemId: mode === "locked" ? lockedItem?.id : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not generate outfits");
@@ -41,6 +63,83 @@ export default function GeneratePage() {
       </h1>
       <p className="text-sm mb-5" style={{ color: "var(--color-text-muted)" }}>Tell us what you&apos;re up to</p>
 
+      <div className="flex mb-6 rounded-full border p-1" style={{ borderColor: "var(--color-border)" }}>
+        {(["free", "locked"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className="flex-1 py-2 rounded-full text-xs"
+            style={{
+              fontFamily: "var(--font-display)",
+              letterSpacing: "0.05em",
+              background: mode === m ? "var(--color-accent)" : "transparent",
+              color: mode === m ? "#08080b" : "var(--color-text-muted)",
+              fontWeight: 600,
+            }}
+          >
+            {m === "free" ? "GENERATE FREELY" : "START WITH AN ITEM"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "locked" && (
+        <div className="mb-6">
+          {lockedItem ? (
+            <div
+              className="rounded-2xl p-4 mb-3 flex items-center gap-3 border"
+              style={{ background: "var(--color-accent-dim)", borderColor: "var(--color-accent)" }}
+            >
+              <ClothingThumb
+                imageUrl={lockedItem.image_url}
+                name={lockedItem.name}
+                category={lockedItem.category}
+                color={lockedItem.primary_color}
+                size={56}
+              />
+              <div className="flex-1">
+                <p className="text-[10px] flex items-center gap-1 mb-0.5" style={{ color: "var(--color-accent)" }}>
+                  <Lock size={10} /> SELECTED — LOCKED
+                </p>
+                <p className="text-sm">{lockedItem.name}</p>
+              </div>
+              <button onClick={() => setLockedItem(null)}>
+                <X size={16} color="var(--color-text-muted)" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>
+                START WITH
+              </p>
+              {wardrobeLoading && (
+                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Loading your wardrobe...</p>
+              )}
+              <div className="grid grid-cols-4 gap-2">
+                {wardrobe?.map((item) => (
+                  <button key={item.id} onClick={() => setLockedItem(item)} className="flex flex-col items-center">
+                    <ClothingThumb
+                      imageUrl={item.image_url}
+                      name={item.name}
+                      category={item.category}
+                      color={item.primary_color}
+                      fill
+                    />
+                    <p className="text-[9px] mt-1 text-center leading-tight" style={{ color: "var(--color-text-muted)" }}>
+                      {item.name}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {wardrobe && wardrobe.length === 0 && !wardrobeLoading && (
+                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                  Add some clothes first to build an outfit around one.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Occasion</p>
       <div className="flex flex-wrap mb-4">
         {["Casual", "College", "Date", "Work", "Dinner"].map((o) => (
@@ -50,7 +149,7 @@ export default function GeneratePage() {
 
       <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Aesthetic</p>
       <div className="flex flex-wrap mb-4">
-        {["minimal", "streetwear", "smart casual", "old money"].map((a) => (
+        {AESTHETICS.map((a) => (
           <Chip key={a} label={a} active={aesthetic === a} onClick={() => setAesthetic(a)} />
         ))}
       </div>
@@ -62,7 +161,11 @@ export default function GeneratePage() {
         ))}
       </div>
 
-      <button onClick={run} disabled={loading} className="btn-chrome w-full py-3 flex items-center justify-center gap-2 mb-6 disabled:opacity-50">
+      <button
+        onClick={run}
+        disabled={loading || (mode === "locked" && !lockedItem)}
+        className="btn-chrome w-full py-3 flex items-center justify-center gap-2 mb-6 disabled:opacity-50"
+      >
         <Sparkles size={16} /> {loading ? "GENERATING..." : "GENERATE OUTFITS"}
       </button>
 
@@ -81,8 +184,22 @@ export default function GeneratePage() {
               </div>
               <div className="flex gap-3 mb-3">
                 {[r.top, r.bottom, r.shoes, r.accessory].filter(Boolean).map((item) => (
-                  <div key={item!.id} className="flex flex-col items-center" style={{ width: 60 }}>
-                    <ItemThumb category={item!.category} color={item!.primary_color} size={52} />
+                  <div key={item!.id} className="flex flex-col items-center relative" style={{ width: 60 }}>
+                    <ClothingThumb
+                      imageUrl={item!.image_url}
+                      name={item!.name}
+                      category={item!.category}
+                      color={item!.primary_color}
+                      size={56}
+                    />
+                    {lockedItem && item!.id === lockedItem.id && (
+                      <div
+                        className="absolute -top-1 -right-1 rounded-full flex items-center justify-center"
+                        style={{ width: 16, height: 16, background: "var(--color-accent)" }}
+                      >
+                        <Lock size={9} color="#08080b" />
+                      </div>
+                    )}
                     <p className="text-[10px] mt-1 text-center leading-tight" style={{ color: "var(--color-text-muted)" }}>{item!.name}</p>
                   </div>
                 ))}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import ItemThumb from "@/components/ItemThumb";
+import ClothingThumb from "@/components/ClothingThumb";
 import { ClothingItem } from "@/types/clothing";
 
 export default async function WardrobePage() {
@@ -52,17 +52,13 @@ export default async function WardrobePage() {
               className="rounded-xl p-2.5 border"
               style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
             >
-              {item.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.image_url}
-                  alt={item.name}
-                  className="w-full aspect-square object-cover rounded-lg"
-                  style={{ border: "1px solid var(--color-border)" }}
-                />
-              ) : (
-                <ItemThumb category={item.category} color={item.primary_color} size={64} />
-              )}
+              <ClothingThumb
+                imageUrl={item.image_url}
+                name={item.name}
+                category={item.category}
+                color={item.primary_color}
+                fill
+              />
               <p className="text-xs mt-2" style={{ fontWeight: 500 }}>{item.name}</p>
               <p className="text-[11px] mt-0.5 capitalize" style={{ color: "var(--color-text-muted)" }}>
                 {item.style?.[0] ?? item.primary_color}

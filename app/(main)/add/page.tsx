@@ -9,6 +9,37 @@ import Chip from "@/components/Chip";
 
 const CATS: ClothingCategory[] = ["top", "bottom", "shoes", "accessory", "bag", "outerwear"];
 
+// Never derive a Storage key from the user's original filename - it can
+// contain characters Supabase Storage rejects (unicode symbols, *, #, etc,
+// as seen with "**.jpg"). Extension comes from a validated MIME whitelist
+// first, falling back to a validated (not raw) extension check on the name.
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+
+function safeExtension(file: File): string {
+  const byMime = MIME_TO_EXT[file.type.toLowerCase()];
+  if (byMime) return byMime;
+
+  const match = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  const ext = match?.[1];
+  if (ext && ALLOWED_EXTENSIONS.has(ext)) return ext === "jpeg" ? "jpg" : ext;
+
+  return "jpg"; // safe default - never propagate an unvalidated extension
+}
+
+function safeStorageFilename(file: File): string {
+  const ext = safeExtension(file);
+  const id = crypto.randomUUID();
+  return `${Date.now()}-${id}.${ext}`;
+}
+
 interface Analysis {
   category: ClothingCategory;
   sub_category?: string;
@@ -71,7 +102,10 @@ export default function AddPage() {
       return;
     }
 
-    const path = `${user.id}/${Date.now()}-${file.name}`;
+    // Path shape ({user_id}/filename) is unchanged, so existing storage RLS
+    // policies (which check the first folder segment against auth.uid())
+    // keep working exactly as before - only the filename itself changed.
+    const path = `${user.id}/${safeStorageFilename(file)}`;
     const { error: uploadError } = await supabase.storage.from("clothing-images").upload(path, file);
     if (uploadError) {
       setError(uploadError.message);

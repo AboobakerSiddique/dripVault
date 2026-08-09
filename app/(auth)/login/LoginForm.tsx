@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -167,12 +168,9 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6" style={{ background: "var(--color-bg-0)" }}>
       <div className="w-full max-w-sm">
-        <h1
-          className="text-3xl mb-2 text-center"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--color-text)" }}
-        >
-          dripVault
-        </h1>
+        <div className="flex justify-center mb-2">
+          <Image src="/logo.png" alt="dripVault" width={264} height={142} priority style={{ width: 220, height: "auto" }} />
+        </div>
         <p className="text-sm text-center mb-8" style={{ color: "var(--color-text-muted)" }}>
           Your personal style. Simplified.
         </p>
