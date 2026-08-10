@@ -32,12 +32,30 @@ export interface GeneratedOutfit {
   top: ClothingItem;
   bottom: ClothingItem;
   shoes: ClothingItem;
+  outerwear?: ClothingItem;
   accessory?: ClothingItem;
+  bag?: ClothingItem;
   colorScore: number;
   styleScore: number;
   formalityScore: number;
+  occasionScore: number;
+  weatherScore: number;
   overall: number;
   explanation?: string;
+}
+
+export interface GenerationStats {
+  wardrobeCount: number;
+  topsAvailable: number;
+  bottomsAvailable: number;
+  shoesAvailable: number;
+  outerwearAvailable: number;
+  accessoryAvailable: number;
+  bagAvailable: number;
+  combinationsEvaluated: number;
+  rawCandidateCount: number;
+  afterCoreTrimCount: number;
+  returnedCount: number;
 }
 
 export interface OutfitFilters {

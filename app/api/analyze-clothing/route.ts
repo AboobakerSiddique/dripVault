@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { createClient } from "@/lib/supabase/server";
 
 // Current GA multimodal model as of Aug 2026 (gemini-3.6-flash, released
 // Jul 21 2026). Do NOT revert to gemini-2.5-flash: as of early July 2026
@@ -36,6 +37,15 @@ function safeLog(context: string, detail: unknown) {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    safeLog("unauthenticated request", {});
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     safeLog("Missing GEMINI_API_KEY", "server env var is not set");
@@ -47,6 +57,8 @@ export async function POST(req: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: "No image provided" }, { status: 400 });
   }
+
+  console.log("[analyze-clothing] request", { userId: user.id, mimeType: file.type, sizeBytes: file.size });
 
   const mimeType = file.type || "image/jpeg";
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -77,6 +89,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const parsed = JSON.parse(text);
+      console.log("[analyze-clothing] success", { userId: user.id, category: parsed.category, formality: parsed.formality });
       return NextResponse.json(parsed);
     } catch (parseErr) {
       safeLog("Failed to parse Gemini JSON output", { model: MODEL, rawTextLength: text.length, parseErr: String(parseErr) });

@@ -3,8 +3,24 @@ import { generateOutfits } from "@/lib/compatibility-engine";
 import { createClient } from "@/lib/supabase/server";
 import { OutfitFilters } from "@/types/clothing";
 
+// Safe logging only: operation name, user id, settings, and counts.
+// Never logs tokens, keys, or full row payloads.
+function log(context: string, detail: Record<string, unknown>) {
+  console.log(`[generate-outfits] ${context}`, detail);
+}
+function logError(context: string, detail: Record<string, unknown>) {
+  console.error(`[generate-outfits:error] ${context}`, detail);
+}
+
 export async function POST(req: NextRequest) {
-  const filters: OutfitFilters = await req.json();
+  let filters: OutfitFilters;
+  try {
+    filters = await req.json();
+  } catch {
+    logError("invalid_json_body", {});
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
   const supabase = await createClient();
 
   const {
@@ -12,8 +28,17 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    logError("unauthenticated", {});
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  log("request", {
+    userId: user.id,
+    lockedItemId: filters.lockedItemId ?? null,
+    aesthetic: filters.aesthetic ?? null,
+    occasion: filters.occasion ?? null,
+    weather: filters.weather ?? null,
+  });
 
   const { data: wardrobe, error } = await supabase
     .from("clothing_items")
@@ -21,15 +46,21 @@ export async function POST(req: NextRequest) {
     .eq("user_id", user.id);
 
   if (error) {
+    logError("wardrobe_query_failed", { userId: user.id, status: error.code, message: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Cheap programmatic filter + score pass over the real wardrobe.
-  // Plug an AI re-rank/explain call in here later (brief section 12) once
-  // the candidate list is small - never send the whole wardrobe to an AI call.
-  // filters.lockedItemId (if present) pins that item into its category slot -
-  // see generateOutfits() for how the rest of the outfit is built around it.
-  const outfits = generateOutfits(wardrobe ?? [], filters, 10);
+  log("wardrobe_loaded", { userId: user.id, wardrobeCount: wardrobe?.length ?? 0 });
 
-  return NextResponse.json({ outfits });
+  try {
+    const { outfits, stats } = generateOutfits(wardrobe ?? [], filters, 8);
+
+    log("generation_complete", { userId: user.id, ...stats });
+
+    return NextResponse.json({ outfits, stats });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logError("generation_failed", { userId: user.id, message });
+    return NextResponse.json({ error: "Outfit generation failed" }, { status: 500 });
+  }
 }

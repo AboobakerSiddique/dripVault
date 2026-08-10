@@ -21,8 +21,10 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("[wardrobe:error] query_failed", { userId: user.id, message: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  console.log("[wardrobe] list", { userId: user.id, count: wardrobe?.length ?? 0 });
   return NextResponse.json({ items: wardrobe ?? [] });
 }

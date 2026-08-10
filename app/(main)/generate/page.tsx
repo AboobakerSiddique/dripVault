@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, Sparkles, Star, X } from "lucide-react";
+import Link from "next/link";
+import { Check, Lock, Sparkles, Star, X } from "lucide-react";
 import { ClothingItem, GeneratedOutfit } from "@/types/clothing";
 import Chip from "@/components/Chip";
 import ClothingThumb from "@/components/ClothingThumb";
@@ -18,6 +19,7 @@ export default function GeneratePage() {
   const [results, setResults] = useState<GeneratedOutfit[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<Record<number, "saving" | "saved" | "error">>({});
 
   const [mode, setMode] = useState<"free" | "locked">("free");
   const [wardrobe, setWardrobe] = useState<ClothingItem[] | null>(null);
@@ -56,11 +58,39 @@ export default function GeneratePage() {
     }
   };
 
+  const saveOutfit = async (idx: number, r: GeneratedOutfit) => {
+    setSaveStatus((s) => ({ ...s, [idx]: "saving" }));
+    const items = [
+      { clothingItemId: r.top.id, role: "top" as const },
+      { clothingItemId: r.bottom.id, role: "bottom" as const },
+      { clothingItemId: r.shoes.id, role: "shoes" as const },
+      ...(r.outerwear ? [{ clothingItemId: r.outerwear.id, role: "outerwear" as const }] : []),
+      ...(r.accessory ? [{ clothingItemId: r.accessory.id, role: "accessory" as const }] : []),
+      ...(r.bag ? [{ clothingItemId: r.bag.id, role: "bag" as const }] : []),
+    ];
+    try {
+      const res = await fetch("/api/outfits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ occasion, aesthetic, weather, score: r.overall, explanation: r.explanation, items }),
+      });
+      if (!res.ok) throw new Error();
+      setSaveStatus((s) => ({ ...s, [idx]: "saved" }));
+    } catch {
+      setSaveStatus((s) => ({ ...s, [idx]: "error" }));
+    }
+  };
+
   return (
     <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
-      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl mb-1">
-        GENERATE OUTFITS
-      </h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl">
+          GENERATE OUTFITS
+        </h1>
+        <Link href="/outfits" className="text-xs" style={{ color: "var(--color-accent)" }}>
+          Saved
+        </Link>
+      </div>
       <p className="text-sm mb-5" style={{ color: "var(--color-text-muted)" }}>Tell us what you&apos;re up to</p>
 
       <div className="flex mb-6 rounded-full border p-1" style={{ borderColor: "var(--color-border)" }}>
@@ -182,8 +212,8 @@ export default function GeneratePage() {
                   <span className="text-xs" style={{ color: "var(--color-accent)", fontWeight: 600 }}>{r.overall}</span>
                 </div>
               </div>
-              <div className="flex gap-3 mb-3">
-                {[r.top, r.bottom, r.shoes, r.accessory].filter(Boolean).map((item) => (
+              <div className="flex gap-3 mb-3 flex-wrap">
+                {[r.top, r.bottom, r.shoes, r.outerwear, r.accessory, r.bag].filter(Boolean).map((item) => (
                   <div key={item!.id} className="flex flex-col items-center relative" style={{ width: 60 }}>
                     <ClothingThumb
                       imageUrl={item!.image_url}
@@ -206,9 +236,26 @@ export default function GeneratePage() {
               </div>
               <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--color-text-muted)" }}>{r.explanation}</p>
               <div className="flex gap-2">
-                <button className="btn-chrome flex-1 py-2 text-xs">SAVE</button>
+                <button
+                  onClick={() => saveOutfit(idx, r)}
+                  disabled={saveStatus[idx] === "saving" || saveStatus[idx] === "saved"}
+                  className="btn-chrome flex-1 py-2 text-xs flex items-center justify-center gap-1 disabled:opacity-60"
+                >
+                  {saveStatus[idx] === "saved" ? (
+                    <>
+                      <Check size={13} /> SAVED
+                    </>
+                  ) : saveStatus[idx] === "saving" ? (
+                    "SAVING..."
+                  ) : (
+                    "SAVE"
+                  )}
+                </button>
                 <button className="btn-outline flex-1 py-2 text-xs">MODIFY</button>
               </div>
+              {saveStatus[idx] === "error" && (
+                <p className="text-[10px] mt-2" style={{ color: "#ff6b6b" }}>Couldn&apos;t save - try again.</p>
+              )}
             </div>
           ))}
         </div>
