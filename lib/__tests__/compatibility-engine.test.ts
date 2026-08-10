@@ -9,7 +9,7 @@
  * having no effect, locked item being dropped or swapped).
  */
 import assert from "node:assert";
-import { generateOutfits } from "../compatibility-engine";
+import { generateOutfits, scoreComposition } from "../compatibility-engine";
 import { ClothingItem } from "../../types/clothing";
 
 let passed = 0;
@@ -119,6 +119,39 @@ test("Never fabricates an item not in the wardrobe", () => {
 test("Empty wardrobe returns zero outfits, not a crash", () => {
   const { outfits } = generateOutfits([], { occasion: "Casual", aesthetic: "minimal", weather: "Warm" }, 8);
   assert.strictEqual(outfits.length, 0);
+});
+
+test("scoreComposition (used by MODIFY) reflects a swapped slot", () => {
+  const t1 = wardrobe.find((i) => i.id === "t1")!;
+  const b1 = wardrobe.find((i) => i.id === "b1")!;
+  const b2 = wardrobe.find((i) => i.id === "b2")!;
+  const s1 = wardrobe.find((i) => i.id === "s1")!;
+
+  const withB1 = scoreComposition({ top: t1, bottom: b1, shoes: s1 }, { occasion: "Casual", aesthetic: "minimal", weather: "Warm" });
+  const withB2 = scoreComposition({ top: t1, bottom: b2, shoes: s1 }, { occasion: "Casual", aesthetic: "minimal", weather: "Warm" });
+
+  assert.strictEqual(withB1.bottom.id, "b1");
+  assert.strictEqual(withB2.bottom.id, "b2");
+  // Rounding can occasionally tie the integer `overall` even when the
+  // underlying composition genuinely differs - assert on the sub-scores,
+  // which is the real invariant (swapping the bottom must change *something*).
+  const changed =
+    withB1.colorScore !== withB2.colorScore ||
+    withB1.styleScore !== withB2.styleScore ||
+    withB1.weatherScore !== withB2.weatherScore;
+  assert.ok(changed, "swapping the bottom changed nothing in any sub-score");
+});
+
+test("scoreComposition never invents items - output mirrors input exactly", () => {
+  const t1 = wardrobe.find((i) => i.id === "t1")!;
+  const b1 = wardrobe.find((i) => i.id === "b1")!;
+  const s1 = wardrobe.find((i) => i.id === "s1")!;
+  const out1 = wardrobe.find((i) => i.id === "out1")!;
+
+  const result = scoreComposition({ top: t1, bottom: b1, shoes: s1, outerwear: out1 }, { occasion: "Casual", aesthetic: "old money", weather: "Cold" });
+  assert.strictEqual(result.top.id, "t1");
+  assert.strictEqual(result.outerwear?.id, "out1");
+  assert.strictEqual(result.accessory, undefined);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

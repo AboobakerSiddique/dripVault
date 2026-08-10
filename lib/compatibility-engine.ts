@@ -274,6 +274,36 @@ function selectDiverse(sorted: GeneratedOutfit[], limit: number): GeneratedOutfi
 // rank -> diversity-aware selection -> top N
 // ============================================================
 
+// ============================================================
+// SINGLE-COMPOSITION SCORER — used by the MODIFY flow to re-score one
+// outfit after a slot swap, reusing the exact same scoring functions
+// generateOutfits() uses internally. Not a second generation system.
+// ============================================================
+
+export function scoreComposition(
+  composition: { top: ClothingItem; bottom: ClothingItem; shoes: ClothingItem; outerwear?: ClothingItem; accessory?: ClothingItem; bag?: ClothingItem },
+  filters: OutfitFilters
+): GeneratedOutfit {
+  const { top, bottom, shoes, outerwear, accessory, bag } = composition;
+  const core = [top, bottom, shoes, ...(outerwear ? [outerwear] : [])];
+  const finalItems = [core, accessory ? [accessory] : [], bag ? [bag] : []].flat();
+
+  const colorScore = averageColorHarmony(finalItems);
+  const style = styleScore(finalItems, filters.aesthetic);
+  const formality = formalityFit(finalItems);
+  const occasion = occasionFit(finalItems, filters.occasion);
+  const weather = weatherFitScore(core, filters.weather);
+
+  const overall = Math.round(colorScore * 0.2 + style * 0.25 + formality * 0.12 + occasion * 0.23 + weather * 0.2);
+
+  const base = {
+    top, bottom, shoes, outerwear, accessory, bag,
+    colorScore, styleScore: style, formalityScore: formality, occasionScore: occasion, weatherScore: weather, overall,
+  };
+
+  return { ...base, explanation: explain(base, filters) };
+}
+
 export function generateOutfits(
   wardrobe: ClothingItem[],
   filters: OutfitFilters,

@@ -19,6 +19,7 @@ function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [gender, setGender] = useState<"men" | "women" | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get("error"));
@@ -86,6 +87,10 @@ function LoginForm() {
       setError("Passwords don't match.");
       return;
     }
+    if (!gender) {
+      setError("Select which wardrobe you're building.");
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
@@ -108,7 +113,7 @@ function LoginForm() {
       email: email.trim(),
       password,
       options: {
-        data: { username: username.trim() },
+        data: { username: username.trim(), gender },
         emailRedirectTo: `${window.location.origin}/auth/confirm?next=/home`,
       },
     });
@@ -297,6 +302,24 @@ function LoginForm() {
               className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
               style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
             />
+            <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Which wardrobe are you building?</p>
+            <div className="flex gap-2 mb-4">
+              {(["men", "women"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGender(g)}
+                  className="flex-1 py-2.5 rounded-lg text-sm capitalize border"
+                  style={{
+                    borderColor: gender === g ? "var(--color-accent)" : "var(--color-border)",
+                    color: gender === g ? "var(--color-accent)" : "var(--color-text-muted)",
+                    background: "var(--color-bg-2)",
+                  }}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
             <button onClick={handleRegister} disabled={loading} className="btn-chrome w-full py-3 disabled:opacity-50">
               {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
             </button>

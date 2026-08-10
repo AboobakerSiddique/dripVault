@@ -47,9 +47,10 @@ export default async function WardrobePage() {
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {items.map((item) => (
-            <div
+            <Link
               key={item.id}
-              className="rounded-xl p-2.5 border"
+              href={`/wardrobe/${item.id}`}
+              className="rounded-xl p-2.5 border block"
               style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
             >
               <ClothingThumb
@@ -63,7 +64,7 @@ export default async function WardrobePage() {
               <p className="text-[11px] mt-0.5 capitalize" style={{ color: "var(--color-text-muted)" }}>
                 {item.style?.[0] ?? item.primary_color}
               </p>
-            </div>
+            </Link>
           ))}
         </div>
       )}

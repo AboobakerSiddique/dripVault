@@ -12,7 +12,7 @@ export default function Header() {
         width={528}
         height={284}
         priority
-        className="h-16 md:h-24 w-auto"
+        className="h-20 md:h-28 w-auto"
         style={{ filter: "drop-shadow(0 0 16px rgba(117,198,255,0.28))" }}
       />
     </div>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Lock, Sparkles, Star, X } from "lucide-react";
+import { Check, ChevronDown, Lock, Sparkles, Star, X } from "lucide-react";
 import { ClothingItem, GeneratedOutfit } from "@/types/clothing";
+import { scoreComposition } from "@/lib/compatibility-engine";
 import Chip from "@/components/Chip";
 import ClothingThumb from "@/components/ClothingThumb";
 
@@ -24,14 +25,15 @@ export default function GeneratePage() {
   const [mode, setMode] = useState<"free" | "locked">("free");
   const [wardrobe, setWardrobe] = useState<ClothingItem[] | null>(null);
   const [lockedItem, setLockedItem] = useState<ClothingItem | null>(null);
-  const wardrobeLoading = mode === "locked" && wardrobe === null;
+  const wardrobeLoading = wardrobe === null;
+  const [modifyingIdx, setModifyingIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    if (mode !== "locked" || wardrobe) return;
+    if (wardrobe) return;
     fetch("/api/wardrobe")
       .then((r) => r.json())
       .then((data) => setWardrobe(data.items ?? []));
-  }, [mode, wardrobe]);
+  }, [wardrobe]);
 
   const run = async () => {
     setLoading(true);
@@ -56,6 +58,29 @@ export default function GeneratePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const swapSlot = (idx: number, slot: "top" | "bottom" | "shoes" | "outerwear" | "accessory" | "bag", item: ClothingItem | null) => {
+    if (!results) return;
+    const current = results[idx];
+    const updated = scoreComposition(
+      {
+        top: current.top,
+        bottom: current.bottom,
+        shoes: current.shoes,
+        outerwear: current.outerwear,
+        accessory: current.accessory,
+        bag: current.bag,
+        [slot]: item ?? undefined,
+      },
+      { occasion, aesthetic, weather }
+    );
+    setResults((prev) => prev!.map((r, i) => (i === idx ? updated : r)));
+    setSaveStatus((s) => {
+      const next = { ...s };
+      delete next[idx];
+      return next;
+    });
   };
 
   const saveOutfit = async (idx: number, r: GeneratedOutfit) => {
@@ -251,8 +276,48 @@ export default function GeneratePage() {
                     "SAVE"
                   )}
                 </button>
-                <button className="btn-outline flex-1 py-2 text-xs">MODIFY</button>
+                <button
+                  onClick={() => setModifyingIdx(modifyingIdx === idx ? null : idx)}
+                  className="btn-outline flex-1 py-2 text-xs"
+                >
+                  {modifyingIdx === idx ? "DONE" : "MODIFY"}
+                </button>
               </div>
+
+              {modifyingIdx === idx && wardrobe && (
+                <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--color-border)" }}>
+                  {(["bottom", "shoes", "outerwear", "accessory", "bag"] as const).map((slot) => {
+                    const current = r[slot];
+                    if (lockedItem && current?.id === lockedItem.id) return null; // locked slot - not editable
+                    const alternatives = wardrobe.filter((w) => w.category === slot && w.id !== current?.id);
+                    if (alternatives.length === 0 && !current) return null;
+                    return (
+                      <div key={slot} className="mb-3">
+                        <p className="text-[10px] uppercase mb-1.5 flex items-center gap-1" style={{ color: "var(--color-text-muted)" }}>
+                          <ChevronDown size={10} /> {slot}
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {current && (
+                            <button
+                              onClick={() => swapSlot(idx, slot, null)}
+                              className="text-[9px] px-2 py-1 rounded-full flex-shrink-0"
+                              style={{ border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
+                            >
+                              None
+                            </button>
+                          )}
+                          {alternatives.map((alt) => (
+                            <button key={alt.id} onClick={() => swapSlot(idx, slot, alt)} className="flex flex-col items-center flex-shrink-0" style={{ width: 44 }}>
+                              <ClothingThumb imageUrl={alt.image_url} name={alt.name} category={alt.category} color={alt.primary_color} size={40} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {saveStatus[idx] === "error" && (
                 <p className="text-[10px] mt-2" style={{ color: "#ff6b6b" }}>Couldn&apos;t save - try again.</p>
               )}
