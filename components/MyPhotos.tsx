@@ -35,6 +35,20 @@ export default function MyPhotos() {
     setUploading(true);
     setError(null);
     try {
+      // Validate BEFORE any Storage write - reuses the same Gemini
+      // client construction as clothing analysis (lib/gemini-client.ts),
+      // just a different classification prompt.
+      const validateBody = new FormData();
+      validateBody.append("image", file);
+      const validateRes = await fetch("/api/validate-photo", { method: "POST", body: validateBody });
+      if (!validateRes.ok) {
+        const data = await validateRes.json().catch(() => ({}));
+        if (data.error === "not_a_person") {
+          throw new Error("This doesn't look like a photo of a person - upload a portrait or full-body photo.");
+        }
+        throw new Error(data.error ?? "Couldn't validate photo");
+      }
+
       const supabase = createClient();
       const {
         data: { user },

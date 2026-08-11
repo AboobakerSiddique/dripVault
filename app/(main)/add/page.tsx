@@ -84,32 +84,24 @@ export default function AddPage() {
     setAnalysis(null);
     setDuplicateOf(null);
 
-    const supabase = createClient();
     const hash = await hashFile(f);
     setImageHash(hash);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const { data: existing } = await supabase
-        .from("clothing_items")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .eq("image_hash", hash)
-        .maybeSingle();
-      if (existing) {
-        setDuplicateOf(existing);
-        setAnalyzing(false);
-        return; // don't burn a Gemini call analyzing an image we won't save
-      }
-    }
 
     try {
       const body = new FormData();
       body.append("image", f);
+      body.append("hash", hash);
       const res = await fetch("/api/analyze-clothing", { method: "POST", body });
       const data = await res.json();
+
+      if (res.status === 409) {
+        setDuplicateOf(data.existingItem);
+        return;
+      }
+      if (res.status === 422 && data.error === "not_clothing") {
+        setError("This doesn't look like a clothing item - try a clear photo of a single wearable piece.");
+        return;
+      }
       if (!res.ok) throw new Error(data.error ?? "Analysis failed");
 
       setAnalysis(data);
@@ -181,6 +173,24 @@ export default function AddPage() {
 
     setSaving(false);
     if (insertError) {
+      // Backstop for the database's own unique index (0009 migration) -
+      // covers the tiny remaining race window between the pre-check above
+      // and this insert (e.g. two near-simultaneous uploads of the same
+      // image). Postgres unique-violation is error code 23505.
+      if (insertError.code === "23505") {
+        // Clean up the orphaned Storage object from the upload above -
+        // don't leak it just because the row insert lost the race.
+        await supabase.storage.from("clothing-images").remove([path]);
+        const { data: existing } = await supabase
+          .from("clothing_items")
+          .select("id, name")
+          .eq("user_id", user.id)
+          .eq("image_hash", imageHash)
+          .maybeSingle();
+        setDuplicateOf(existing ?? { id: "", name: "an existing item" });
+        setAnalysis(null);
+        return;
+      }
       setError(insertError.message);
       return;
     }
