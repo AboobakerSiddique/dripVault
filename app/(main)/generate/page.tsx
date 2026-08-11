@@ -10,13 +10,21 @@ import ClothingThumb from "@/components/ClothingThumb";
 
 const AESTHETICS = [
   "minimal", "streetwear", "smart casual", "old money",
-  "vintage", "y2k", "monochrome", "formal", "athletic", "korean",
+  "vintage", "y2k", "monochrome", "formal", "athletic", "korean", "gym",
 ];
 
 export default function GeneratePage() {
   const [occasion, setOccasion] = useState("Casual");
   const [aesthetic, setAesthetic] = useState("minimal");
-  const [weather, setWeather] = useState("Warm");
+  // Picks up ?weather=Hot from the dashboard's "Generate for today" link.
+  // Lazy initializer (not an effect) - avoids the cascading-render issue
+  // and works fine since window is guarded for the SSR render pass.
+  const [weather, setWeather] = useState(() => {
+    if (typeof window === "undefined") return "Warm";
+    const params = new URLSearchParams(window.location.search);
+    const w = params.get("weather");
+    return w && ["Hot", "Warm", "Cool", "Cold", "Rainy"].includes(w) ? w : "Warm";
+  });
   const [results, setResults] = useState<GeneratedOutfit[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

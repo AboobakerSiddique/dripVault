@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Chip from "@/components/Chip";
 
-const AESTHETICS = ["minimal", "streetwear", "smart casual", "old money", "vintage", "y2k", "monochrome", "formal", "athletic", "korean"];
+const AESTHETICS = ["minimal", "streetwear", "smart casual", "old money", "vintage", "y2k", "monochrome", "formal", "athletic", "korean", "gym"];
 const FITS = ["slim", "regular", "relaxed", "oversized"];
 
 export default function Preferences() {

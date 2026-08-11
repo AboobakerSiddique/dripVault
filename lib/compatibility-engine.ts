@@ -77,6 +77,14 @@ function aestheticHeuristicBonus(items: ClothingItem[], aesthetic?: string): num
       return fits.some((f) => f.includes("oversized") || f.includes("relaxed")) ? 12 : 0;
     case "formal":
       return avgFormality >= 6 ? 12 : Math.max(0, avgFormality - 6) * 4;
+    case "gym":
+    case "athletic": {
+      const lowFormality = avgFormality <= 3 ? 12 : Math.max(0, 8 - (avgFormality - 3) * 3);
+      const performanceMaterial = items.some((i) =>
+        ["polyester", "spandex", "nylon", "mesh", "jersey", "dri-fit", "performance", "cotton"].some((m) => (i.material ?? "").toLowerCase().includes(m))
+      );
+      return lowFormality + (performanceMaterial ? 8 : 0);
+    }
     default:
       return 0;
   }

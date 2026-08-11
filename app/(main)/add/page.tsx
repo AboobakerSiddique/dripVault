@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ImagePlus, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +41,14 @@ function safeStorageFilename(file: File): string {
   return `${Date.now()}-${id}.${ext}`;
 }
 
+// Content hash, not filename - two copies of the same photo saved under
+// different names must still be caught. SHA-256 via Web Crypto (no library).
+async function hashFile(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 interface Analysis {
   category: ClothingCategory;
   sub_category?: string;
@@ -47,6 +56,9 @@ interface Analysis {
   secondary_colors?: string[];
   pattern?: string;
   fit?: string;
+  silhouette?: string;
+  material?: string;
+  season?: string[];
   style: string[];
   formality: number;
 }
@@ -61,6 +73,8 @@ export default function AddPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [name, setName] = useState("");
   const [styleText, setStyleText] = useState("");
+  const [imageHash, setImageHash] = useState<string | null>(null);
+  const [duplicateOf, setDuplicateOf] = useState<{ id: string; name: string } | null>(null);
 
   const onFileSelected = async (f: File) => {
     setFile(f);
@@ -68,6 +82,28 @@ export default function AddPage() {
     setError(null);
     setAnalyzing(true);
     setAnalysis(null);
+    setDuplicateOf(null);
+
+    const supabase = createClient();
+    const hash = await hashFile(f);
+    setImageHash(hash);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: existing } = await supabase
+        .from("clothing_items")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .eq("image_hash", hash)
+        .maybeSingle();
+      if (existing) {
+        setDuplicateOf(existing);
+        setAnalyzing(false);
+        return; // don't burn a Gemini call analyzing an image we won't save
+      }
+    }
 
     try {
       const body = new FormData();
@@ -105,6 +141,16 @@ export default function AddPage() {
     // Path shape ({user_id}/filename) is unchanged, so existing storage RLS
     // policies (which check the first folder segment against auth.uid())
     // keep working exactly as before - only the filename itself changed.
+    // Hard guard: user.id must be a real Supabase Auth UUID. If this ever
+    // fails, something is badly wrong upstream (a corrupted session) - fail
+    // loudly here rather than silently uploading under a wrong/malformed
+    // folder name.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(user.id)) {
+      setError("Invalid session - please log out and back in.");
+      setSaving(false);
+      return;
+    }
     const path = `${user.id}/${safeStorageFilename(file)}`;
     const { error: uploadError } = await supabase.storage.from("clothing-images").upload(path, file);
     if (uploadError) {
@@ -124,9 +170,13 @@ export default function AddPage() {
       secondary_colors: analysis.secondary_colors ?? [],
       pattern: analysis.pattern,
       fit: analysis.fit,
+      silhouette: analysis.silhouette,
+      material: analysis.material,
+      season: analysis.season ?? [],
       style: styleText.split(",").map((s) => s.trim()).filter(Boolean),
       formality: analysis.formality,
       image_url: pub.publicUrl,
+      image_hash: imageHash,
     });
 
     setSaving(false);
@@ -173,6 +223,16 @@ export default function AddPage() {
         )}
       </label>
 
+      {duplicateOf && (
+        <div className="rounded-2xl p-4 mb-5 border" style={{ borderColor: "var(--color-accent)", background: "var(--color-accent-dim)" }}>
+          <p className="text-sm mb-1">This item already exists in your wardrobe</p>
+          <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>Saved as &quot;{duplicateOf.name}&quot;</p>
+          <Link href={`/wardrobe/${duplicateOf.id}`} className="btn-outline inline-block px-4 py-2 text-xs">
+            VIEW EXISTING ITEM
+          </Link>
+        </div>
+      )}
+
       {analyzing && (
         <div className="flex items-center gap-2 mb-5 text-sm" style={{ color: "var(--color-accent)" }}>
           <Loader2 size={16} className="animate-spin" /> Analyzing item...
@@ -185,7 +245,7 @@ export default function AddPage() {
         </p>
       )}
 
-      {analysis && !analyzing && (
+      {analysis && !analyzing && !duplicateOf && (
         <>
           <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Name</p>
           <input

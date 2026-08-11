@@ -26,7 +26,7 @@ export async function GET() {
   });
 }
 
-const EDITABLE_FIELDS = ["preferred_styles", "preferred_colors", "preferred_fits", "disliked_styles", "disliked_colors"] as const;
+const EDITABLE_FIELDS = ["preferred_styles", "preferred_colors", "preferred_fits", "disliked_styles", "disliked_colors", "location_city"] as const;
 
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();

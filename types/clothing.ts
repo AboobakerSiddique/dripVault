@@ -22,6 +22,7 @@ export interface ClothingItem {
   formality: number; // 1-10
   season?: string[];
   image_url?: string;
+  image_hash?: string;
   favorite?: boolean;
   wear_count?: number;
   last_worn?: string | null;

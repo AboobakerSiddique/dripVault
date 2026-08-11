@@ -1,21 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Plus, Star, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Photo {
   id: string;
   image_url: string; // storage path
   signed_url: string | null;
-  is_active: boolean;
 }
 
 const MIME_TO_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function MyPhotos() {
-  const [photos, setPhotos] = useState<Photo[] | null>(null);
+  const [photo, setPhoto] = useState<Photo | null | undefined>(undefined); // undefined = loading
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,13 +22,15 @@ export default function MyPhotos() {
   const load = () => {
     fetch("/api/profile-photos")
       .then((r) => r.json())
-      .then((data) => setPhotos(data.photos ?? []));
+      .then((data) => setPhoto(data.photo ?? null));
   };
 
   useEffect(() => {
     load();
   }, []);
 
+  // Uploading when a photo already exists replaces it - the API deletes
+  // the old row + Storage object before inserting the new one.
   const upload = async (file: File) => {
     setUploading(true);
     setError(null);
@@ -61,59 +62,52 @@ export default function MyPhotos() {
     }
   };
 
-  const setActive = async (id: string) => {
-    await fetch(`/api/profile-photos/${id}`, { method: "PATCH" });
-    load();
-  };
-
-  const remove = async (id: string) => {
-    await fetch(`/api/profile-photos/${id}`, { method: "DELETE" });
-    load();
+  const remove = async () => {
+    if (!photo) return;
+    await fetch(`/api/profile-photos/${photo.id}`, { method: "DELETE" });
+    setPhoto(null);
   };
 
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>MY PHOTOS</p>
+        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>MY PHOTO</p>
         <p className="text-[10px]" style={{ color: "var(--color-text-muted)", opacity: 0.7 }}>Optional · for future try-on</p>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {photos?.map((p) => (
-          <div key={p.id} className="relative" style={{ width: 68, height: 68 }}>
-            {p.signed_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={p.signed_url}
-                alt="Profile"
-                onClick={() => setActive(p.id)}
-                className="w-full h-full object-cover rounded-lg cursor-pointer"
-                style={{ border: p.is_active ? "2px solid var(--color-accent)" : "1px solid var(--color-border)" }}
-              />
-            )}
-            {p.is_active && (
-              <div className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: "var(--color-accent)" }}>
-                <Star size={10} color="#08080b" fill="#08080b" />
-              </div>
-            )}
+      <div className="flex items-center gap-3">
+        <div className="relative" style={{ width: 76, height: 76 }}>
+          {photo?.signed_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo.signed_url}
+              alt="Your photo"
+              className="w-full h-full object-cover rounded-lg"
+              style={{ border: "1px solid var(--color-border)" }}
+            />
+          ) : (
             <button
-              onClick={() => remove(p.id)}
-              className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center"
-              style={{ width: 18, height: 18, background: "var(--color-bg-1)", border: "1px solid var(--color-border)" }}
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading || photo === undefined}
+              className="w-full h-full flex items-center justify-center rounded-lg border"
+              style={{ borderColor: "var(--color-border)", borderStyle: "dashed", background: "var(--color-bg-2)" }}
             >
-              <Trash2 size={9} color="#ff6b6b" />
+              {uploading ? <Loader2 size={18} className="animate-spin" color="var(--color-text-muted)" /> : <Plus size={18} color="var(--color-text-muted)" />}
+            </button>
+          )}
+        </div>
+
+        {photo?.signed_url && (
+          <div className="flex flex-col gap-2">
+            <button onClick={() => inputRef.current?.click()} disabled={uploading} className="btn-outline px-4 py-2 text-xs">
+              {uploading ? "UPLOADING..." : "REPLACE"}
+            </button>
+            <button onClick={remove} className="text-xs flex items-center gap-1" style={{ color: "#ff6b6b" }}>
+              <Trash2 size={12} /> DELETE
             </button>
           </div>
-        ))}
+        )}
 
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center justify-center rounded-lg border"
-          style={{ width: 68, height: 68, borderColor: "var(--color-border)", borderStyle: "dashed", background: "var(--color-bg-2)" }}
-        >
-          {uploading ? <Loader2 size={18} className="animate-spin" color="var(--color-text-muted)" /> : <Plus size={18} color="var(--color-text-muted)" />}
-        </button>
         <input
           ref={inputRef}
           type="file"

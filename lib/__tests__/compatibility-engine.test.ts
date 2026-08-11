@@ -154,5 +154,18 @@ test("scoreComposition never invents items - output mirrors input exactly", () =
   assert.strictEqual(result.accessory, undefined);
 });
 
+test("Gym aesthetic favors low-formality athletic pieces over old money pieces", () => {
+  const gymTop: ClothingItem = { id: "gym-t1", name: "grey performance tee", category: "top", primary_color: "grey", fit: "regular", style: ["athletic"], formality: 1, material: "polyester" };
+  const gymBottom: ClothingItem = { id: "gym-b1", name: "black joggers", category: "bottom", primary_color: "black", fit: "relaxed", style: ["athletic"], formality: 1, material: "polyester" };
+  const dressShirt: ClothingItem = { id: "gym-t2", name: "white dress shirt", category: "top", primary_color: "white", fit: "slim", style: ["old money", "formal"], formality: 8, material: "cotton" };
+  const dressPants: ClothingItem = { id: "gym-b2", name: "navy dress trousers", category: "bottom", primary_color: "navy", fit: "regular", style: ["old money", "formal"], formality: 8, material: "wool" };
+  const shoes: ClothingItem = { id: "gym-s1", name: "white sneakers", category: "shoes", primary_color: "white", fit: "regular", style: ["athletic", "casual"], formality: 2, material: "canvas" };
+
+  const athleticFit = scoreComposition({ top: gymTop, bottom: gymBottom, shoes }, { aesthetic: "gym" });
+  const formalFit = scoreComposition({ top: dressShirt, bottom: dressPants, shoes }, { aesthetic: "gym" });
+
+  assert.ok(athleticFit.styleScore > formalFit.styleScore, `gym aesthetic should score athletic wear higher (${athleticFit.styleScore} vs ${formalFit.styleScore})`);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
