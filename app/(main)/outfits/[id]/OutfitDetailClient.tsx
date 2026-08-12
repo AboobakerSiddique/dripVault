@@ -1,12 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, ThumbsDown, ThumbsUp, CheckCircle2 } from "lucide-react";
+import { Heart, ThumbsDown, ThumbsUp, CheckCircle2, CalendarPlus } from "lucide-react";
 
-export default function OutfitDetailClient({ outfitId }: { outfitId: string }) {
+const NOTE_LIMIT = 100;
+const PLAN_NOTE_LIMIT = 150;
+
+export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId: string; initialNote: string }) {
   const [feedbackSent, setFeedbackSent] = useState<string | null>(null);
   const [wornSent, setWornSent] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const [note, setNote] = useState(initialNote);
+  const [noteSaved, setNoteSaved] = useState(true);
+
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const [planDate, setPlanDate] = useState("");
+  const [planNote, setPlanNote] = useState("");
+  const [planStatus, setPlanStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const sendFeedback = async (rating: string) => {
     setBusy(true);
@@ -26,8 +37,47 @@ export default function OutfitDetailClient({ outfitId }: { outfitId: string }) {
     if (res.ok) setWornSent(true);
   };
 
+  const saveNote = async () => {
+    const res = await fetch(`/api/outfits/${outfitId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
+    setNoteSaved(res.ok);
+  };
+
+  const addToPlanner = async () => {
+    if (!planDate) return;
+    setPlanStatus("saving");
+    const res = await fetch("/api/outfit-plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outfitId, plannedDate: planDate, note: planNote }),
+    });
+    setPlanStatus(res.ok ? "saved" : "error");
+  };
+
   return (
     <div className="mt-6">
+      {/* Note */}
+      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>NOTE</p>
+      <textarea
+        value={note}
+        onChange={(e) => {
+          setNote(e.target.value.slice(0, NOTE_LIMIT));
+          setNoteSaved(false);
+        }}
+        onBlur={saveNote}
+        placeholder="e.g. Perfect for Friday dinner"
+        rows={2}
+        className="w-full mb-1 px-3 py-2 rounded-lg text-sm outline-none border resize-none"
+        style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+      />
+      <p className="text-[10px] mb-5" style={{ color: noteSaved ? "var(--color-text-muted)" : "var(--color-accent)" }}>
+        {note.length}/{NOTE_LIMIT}{!noteSaved ? " · saving on blur..." : ""}
+      </p>
+
+      {/* Feedback */}
       <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>How do you feel about this one?</p>
       <div className="flex gap-2 mb-4">
         {[
@@ -49,17 +99,49 @@ export default function OutfitDetailClient({ outfitId }: { outfitId: string }) {
           </button>
         ))}
       </div>
-      {feedbackSent && (
-        <p className="text-xs mb-4" style={{ color: "var(--color-accent)" }}>Feedback saved.</p>
-      )}
+      {feedbackSent && <p className="text-xs mb-4" style={{ color: "var(--color-accent)" }}>Feedback saved.</p>}
 
       <button
         onClick={markWorn}
         disabled={busy || wornSent}
-        className="btn-outline w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+        className="btn-outline w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50 mb-3"
       >
         <CheckCircle2 size={16} /> {wornSent ? "MARKED AS WORN" : "MARK AS WORN TODAY"}
       </button>
+
+      {/* Add to planner */}
+      {!planningOpen ? (
+        <button onClick={() => setPlanningOpen(true)} className="btn-outline w-full py-3 flex items-center justify-center gap-2">
+          <CalendarPlus size={16} /> ADD TO PLANNER
+        </button>
+      ) : (
+        <div className="rounded-2xl p-4 border" style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}>
+          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Date</p>
+          <input
+            type="date"
+            value={planDate}
+            onChange={(e) => setPlanDate(e.target.value)}
+            className="w-full mb-3 px-3 py-2 rounded-lg text-sm outline-none border"
+            style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          />
+          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Note (optional)</p>
+          <input
+            value={planNote}
+            onChange={(e) => setPlanNote(e.target.value.slice(0, PLAN_NOTE_LIMIT))}
+            placeholder="e.g. College"
+            className="w-full mb-3 px-3 py-2 rounded-lg text-sm outline-none border"
+            style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+          />
+          <button
+            onClick={addToPlanner}
+            disabled={!planDate || planStatus === "saving"}
+            className="btn-chrome w-full py-2.5 text-xs disabled:opacity-50"
+          >
+            {planStatus === "saved" ? "ADDED ✓" : planStatus === "saving" ? "ADDING..." : "CONFIRM"}
+          </button>
+          {planStatus === "error" && <p className="text-[10px] mt-2" style={{ color: "#ff6b6b" }}>Couldn&apos;t add to planner.</p>}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Heart, Loader2, Trash2 } from "lucide-react";
 import Chip from "@/components/Chip";
 import ClothingThumb from "@/components/ClothingThumb";
 import { ClothingCategory, ClothingItem } from "@/types/clothing";
@@ -18,6 +18,7 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
   const [fit, setFit] = useState(item.fit ?? "");
   const [formality, setFormality] = useState(item.formality);
   const [styleText, setStyleText] = useState((item.style ?? []).join(", "));
+  const [favorite, setFavorite] = useState(item.favorite ?? false);
   const [seasonText, setSeasonText] = useState((item.season ?? []).join(", "));
 
   const [saving, setSaving] = useState(false);
@@ -40,6 +41,7 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
         formality,
         style: styleText.split(",").map((s) => s.trim()).filter(Boolean),
         season: seasonText.split(",").map((s) => s.trim()).filter(Boolean),
+        favorite,
       }),
     });
     setSaving(false);
@@ -78,8 +80,15 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
         </h1>
       </div>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-6 relative">
         <ClothingThumb imageUrl={item.image_url} name={item.name} category={category} color={primaryColor} size={140} />
+        <button
+          onClick={() => setFavorite((f) => !f)}
+          className="absolute rounded-full flex items-center justify-center"
+          style={{ top: "calc(50% - 70px)", left: "calc(50% + 40px)", width: 32, height: 32, background: "rgba(8,8,11,0.7)" }}
+        >
+          <Heart size={16} color={favorite ? "#ff6b6b" : "#fff"} fill={favorite ? "#ff6b6b" : "none"} />
+        </button>
       </div>
 
       <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Category</p>

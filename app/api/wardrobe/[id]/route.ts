@@ -10,7 +10,7 @@ function logError(context: string, detail: Record<string, unknown>) {
 
 const EDITABLE_FIELDS = [
   "name", "category", "sub_category", "primary_color", "secondary_colors",
-  "pattern", "fit", "silhouette", "material", "style", "formality", "season",
+  "pattern", "fit", "silhouette", "material", "style", "formality", "season", "favorite",
 ] as const;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -71,8 +71,12 @@ export default async function ProfilePage() {
         </Link>
       </div>
 
-      <Link href="/history" className="text-xs mb-4 inline-block" style={{ color: "var(--color-accent)" }}>
+      <Link href="/history" className="text-xs mb-2 inline-block" style={{ color: "var(--color-accent)" }}>
         View outfit history →
+      </Link>
+      <br />
+      <Link href="/planner" className="text-xs mb-4 inline-block" style={{ color: "var(--color-accent)" }}>
+        Outfit planner & calendar →
       </Link>
 
       {favoriteAesthetic && (

@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ClothingThumb from "@/components/ClothingThumb";
+import OutfitFavoriteButton from "@/components/OutfitFavoriteButton";
 import { ClothingItem } from "@/types/clothing";
 import OutfitDetailClient from "./OutfitDetailClient";
 
@@ -30,9 +31,10 @@ export default async function OutfitDetailPage({ params }: { params: Promise<{ i
         <Link href="/outfits">
           <ChevronLeft size={20} color="var(--color-text-muted)" />
         </Link>
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl capitalize">
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl capitalize flex-1">
           {[outfit.aesthetic, outfit.occasion].filter(Boolean).join(" · ") || "Outfit"}
         </h1>
+        <OutfitFavoriteButton outfitId={outfit.id} initialFavorite={!!outfit.favorite} />
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -56,7 +58,7 @@ export default async function OutfitDetailPage({ params }: { params: Promise<{ i
         {outfit.weather ? ` · ${outfit.weather} weather` : ""}
       </p>
 
-      <OutfitDetailClient outfitId={outfit.id} />
+      <OutfitDetailClient outfitId={outfit.id} initialNote={outfit.note ?? ""} />
     </div>
   );
 }

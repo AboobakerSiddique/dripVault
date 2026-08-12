@@ -167,5 +167,80 @@ test("Gym aesthetic favors low-formality athletic pieces over old money pieces",
   assert.ok(athleticFit.styleScore > formalFit.styleScore, `gym aesthetic should score athletic wear higher (${athleticFit.styleScore} vs ${formalFit.styleScore})`);
 });
 
+// ============================================================
+// COLOR INTELLIGENCE (phase 10)
+// ============================================================
+
+test("Classic neutral pairings score well: black + white + grey", () => {
+  const top: ClothingItem = { id: "c1", name: "black tee", category: "top", primary_color: "black", style: ["minimal"], formality: 3 };
+  const bottom: ClothingItem = { id: "c2", name: "grey trousers", category: "bottom", primary_color: "grey", style: ["minimal"], formality: 5 };
+  const shoes: ClothingItem = { id: "c3", name: "white sneakers", category: "shoes", primary_color: "white", style: ["minimal"], formality: 3 };
+  const result = scoreComposition({ top, bottom, shoes }, { aesthetic: "minimal" });
+  assert.ok(result.colorScore >= 85, `expected a strong neutral score, got ${result.colorScore}`);
+});
+
+test("Navy + beige and brown + cream both score well (classic pairings, not just monochrome)", () => {
+  const navy: ClothingItem = { id: "c4", name: "navy sweater", category: "top", primary_color: "navy", style: ["smart casual"], formality: 5 };
+  const beige: ClothingItem = { id: "c5", name: "beige trousers", category: "bottom", primary_color: "beige", style: ["smart casual"], formality: 5 };
+  const shoes: ClothingItem = { id: "c6", name: "brown loafers", category: "shoes", primary_color: "brown", style: ["smart casual"], formality: 5 };
+  const result = scoreComposition({ top: navy, bottom: beige, shoes }, { aesthetic: "smart casual" });
+  assert.ok(result.colorScore >= 80, `expected navy+beige+brown to score well, got ${result.colorScore}`);
+});
+
+test("Monochrome aesthetic rewards same-family palettes over multi-color ones", () => {
+  const items = {
+    top: { id: "c7", name: "black tee", category: "top" as const, primary_color: "black", style: ["monochrome"], formality: 3 },
+    bottom: { id: "c8", name: "charcoal trousers", category: "bottom" as const, primary_color: "charcoal", style: ["monochrome"], formality: 5 },
+    shoes: { id: "c9", name: "black sneakers", category: "shoes" as const, primary_color: "black", style: ["monochrome"], formality: 3 },
+  };
+  const multiColor = {
+    top: { id: "c10", name: "red tee", category: "top" as const, primary_color: "red", style: ["casual"], formality: 3 },
+    bottom: { id: "c11", name: "yellow trousers", category: "bottom" as const, primary_color: "yellow", style: ["casual"], formality: 3 },
+    shoes: { id: "c12", name: "purple sneakers", category: "shoes" as const, primary_color: "purple", style: ["casual"], formality: 3 },
+  };
+  const monoResult = scoreComposition(items, { aesthetic: "monochrome" });
+  const multiResult = scoreComposition(multiColor, { aesthetic: "monochrome" });
+  assert.ok(monoResult.colorScore > multiResult.colorScore, `monochrome outfit should score higher under monochrome aesthetic (${monoResult.colorScore} vs ${multiResult.colorScore})`);
+});
+
+test("Streetwear tolerates bold contrast better than old money does", () => {
+  const boldTop: ClothingItem = { id: "c13", name: "bright red hoodie", category: "top", primary_color: "bright red", style: ["streetwear"], formality: 1 };
+  const boldBottom: ClothingItem = { id: "c14", name: "vivid green cargo pants", category: "bottom", primary_color: "vivid green", style: ["streetwear"], formality: 1 };
+  const shoes: ClothingItem = { id: "c15", name: "white sneakers", category: "shoes", primary_color: "white", style: ["streetwear", "casual"], formality: 2 };
+
+  const streetwearScore = scoreComposition({ top: boldTop, bottom: boldBottom, shoes }, { aesthetic: "streetwear" }).colorScore;
+  const oldMoneyScore = scoreComposition({ top: boldTop, bottom: boldBottom, shoes }, { aesthetic: "old money" }).colorScore;
+
+  assert.ok(streetwearScore >= oldMoneyScore, `bold contrast should score at least as well under streetwear as old money (${streetwearScore} vs ${oldMoneyScore})`);
+});
+
+test("Color diversity: two outfits with different item IDs but the same all-neutral palette are not treated as maximally diverse", () => {
+  const wardrobe: ClothingItem[] = [
+    { id: "d-top", name: "black tee", category: "top", primary_color: "black", style: ["minimal"], formality: 3 },
+    { id: "d-b1", name: "black trousers", category: "bottom", primary_color: "black", style: ["minimal"], formality: 5 },
+    { id: "d-b2", name: "grey trousers", category: "bottom", primary_color: "grey", style: ["minimal"], formality: 5 },
+    { id: "d-s1", name: "white sneakers", category: "shoes", primary_color: "white", style: ["minimal"], formality: 3 },
+    { id: "d-s2", name: "cream sneakers", category: "shoes", primary_color: "cream", style: ["minimal"], formality: 3 },
+  ];
+  const { outfits } = generateOutfits(wardrobe, { occasion: "Casual", aesthetic: "minimal", weather: "Warm", lockedItemId: "d-top" }, 4);
+  // All bottoms/shoes here are neutral, so every result should still be a
+  // *distinct combination* even though the palette itself stays neutral throughout.
+  const signatures = outfits.map((o) => `${o.bottom.id}|${o.shoes.id}`);
+  assert.strictEqual(new Set(signatures).size, signatures.length, "expected distinct item combinations despite similar neutral palette");
+});
+
+test("Explanation names the actual color relationship, not generic boilerplate", () => {
+  const monoTop: ClothingItem = { id: "e1", name: "navy sweater", category: "top", primary_color: "navy", style: ["minimal"], formality: 3 };
+  const monoBottom: ClothingItem = { id: "e2", name: "blue trousers", category: "bottom", primary_color: "blue", style: ["minimal"], formality: 5 };
+  const shoes: ClothingItem = { id: "e3", name: "white sneakers", category: "shoes", primary_color: "white", style: ["minimal"], formality: 3 };
+  const mono = scoreComposition({ top: monoTop, bottom: monoBottom, shoes }, { aesthetic: "minimal", occasion: "Casual" });
+  assert.ok(mono.explanation?.includes("monochrome"), `expected monochrome language for same-family colors, got: ${mono.explanation}`);
+
+  const redTop: ClothingItem = { id: "e4", name: "red jacket", category: "top", primary_color: "red", style: ["streetwear"], formality: 2 };
+  const greenBottom: ClothingItem = { id: "e5", name: "green cargo pants", category: "bottom", primary_color: "green", style: ["streetwear"], formality: 2 };
+  const complementary = scoreComposition({ top: redTop, bottom: greenBottom, shoes }, { aesthetic: "streetwear", occasion: "Casual" });
+  assert.ok(complementary.explanation?.includes("complementary"), `expected complementary language for opposite hues, got: ${complementary.explanation}`);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

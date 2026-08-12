@@ -4,6 +4,13 @@ import { ClothingItem, GeneratedOutfit, GenerationStats, OutfitFilters } from "@
 // COLOR — grouped by family instead of exact string match, since
 // Gemini returns descriptive colors ("dark brown", "charcoal grey")
 // that an exact-match neutrals list would never recognize.
+//
+// Extended with a simplified 12-point hue wheel + warm/cool + saturation
+// inference from descriptive keywords, so the engine can reason about
+// complementary/analogous/triadic relationships and saturation clash
+// instead of only "same family vs not". Still entirely derived from the
+// existing primary_color/secondary_colors text fields - no new schema,
+// no computer vision.
 // ============================================================
 
 const COLOR_FAMILY_KEYWORDS: [family: string, keywords: string[]][] = [
@@ -17,6 +24,22 @@ const COLOR_FAMILY_KEYWORDS: [family: string, keywords: string[]][] = [
   ["pink", ["pink", "blush"]],
 ];
 
+// Approximate positions on a 12-point hue wheel, laid out to match real
+// complementary pairs (red-green, orange-blue, yellow-purple all land
+// exactly 6 apart) rather than an arbitrary even spacing of the 7 family
+// buckets - only what's needed to classify analogous (adjacent) / triadic
+// (4 apart) / complementary (opposite, 6 apart) relationships.
+const FAMILY_HUE: Record<string, number> = { red: 0, earth: 2, yellow: 4, green: 6, blue: 8, purple: 10, pink: 11 };
+const WARM_FAMILIES = new Set(["red", "earth", "yellow", "pink"]);
+const COOL_FAMILIES = new Set(["green", "blue", "purple"]);
+
+interface ColorInfo {
+  family: string;
+  hue: number | null; // null = neutral (no hue) or an unmapped family
+  warmth: "warm" | "cool" | "neutral";
+  saturation: "high" | "medium" | "low";
+}
+
 function colorFamily(color: string): string {
   const c = color.toLowerCase().trim();
   for (const [family, keywords] of COLOR_FAMILY_KEYWORDS) {
@@ -25,23 +48,111 @@ function colorFamily(color: string): string {
   return c;
 }
 
-function colorHarmony(a: string, b: string): number {
-  const fa = colorFamily(a);
-  const fb = colorFamily(b);
-  if (fa === fb) return fa === "neutral" ? 94 : 84;
-  if (fa === "neutral" || fb === "neutral") return 90;
-  return 60;
+function colorInfo(color: string): ColorInfo {
+  const c = color.toLowerCase().trim();
+  const family = colorFamily(c);
+
+  let saturation: ColorInfo["saturation"] = "medium";
+  if (["bright", "neon", "vivid", "vibrant", "electric"].some((w) => c.includes(w))) saturation = "high";
+  else if (["pale", "muted", "dusty", "washed", "faded", "soft", "pastel", "light"].some((w) => c.includes(w))) saturation = "low";
+  else if (["dark", "deep"].some((w) => c.includes(w)) && family !== "neutral") saturation = "low";
+
+  const warmth: ColorInfo["warmth"] = family === "neutral" ? "neutral" : WARM_FAMILIES.has(family) ? "warm" : COOL_FAMILIES.has(family) ? "cool" : "neutral";
+  const hue = family === "neutral" ? null : (FAMILY_HUE[family] ?? null);
+
+  return { family, hue, warmth, saturation };
 }
 
-function averageColorHarmony(items: ClothingItem[]): number {
+type HueRelationship = "same" | "analogous" | "complementary" | "triadic" | "clash";
+
+function hueRelationship(hueA: number, hueB: number): HueRelationship {
+  const diff = Math.min(Math.abs(hueA - hueB), 12 - Math.abs(hueA - hueB));
+  if (diff === 0) return "same";
+  if (diff <= 2) return "analogous";
+  if (diff === 6) return "complementary";
+  if (diff === 4) return "triadic";
+  return "clash"; // the "awkward middle" hue distances (3 or 5)
+}
+
+// Pairwise color score between two ITEMS (not raw strings) so aesthetic
+// context and saturation can factor in - "red + green" isn't a fixed
+// verdict, it depends on whether it's a muted olive-and-maroon old money
+// pairing or two neon pieces in a streetwear fit.
+function pairColorScore(a: ClothingItem, b: ClothingItem, aesthetic?: string): number {
+  const ia = colorInfo(a.primary_color);
+  const ib = colorInfo(b.primary_color);
+
+  if (ia.family === "neutral" && ib.family === "neutral") return 94;
+  if (ia.family === "neutral" || ib.family === "neutral") return 90;
+  if (ia.family === ib.family) return 86; // monochromatic pairing
+
+  if (ia.hue === null || ib.hue === null) return 78; // unmapped family - stay neutral rather than guess
+
+  const rel = hueRelationship(ia.hue, ib.hue);
+  let score = { analogous: 84, complementary: 80, triadic: 74, clash: 62, same: 86 }[rel];
+
+  // Two loud colors clashing reads worse than two quiet ones - saturation
+  // matters more than the raw hue distance itself.
+  if (ia.saturation === "high" && ib.saturation === "high" && rel !== "complementary") score -= 8;
+  if (ia.saturation === "low" && ib.saturation === "low") score += 6;
+
+  const target = aesthetic?.toLowerCase();
+  if (target === "streetwear" || target === "gym" || target === "y2k") {
+    if (rel === "complementary" || rel === "triadic") score += 8; // bold contrast is the point, not a flaw
+  }
+  if (target === "old money" || target === "minimal" || target === "smart casual") {
+    if (rel === "clash") score -= 6;
+  }
+  if (target === "monochrome") {
+    score = ia.family === ib.family ? 96 : Math.max(score - 15, 40);
+  }
+
+  return Math.max(35, Math.min(96, score));
+}
+
+function averageColorHarmony(items: ClothingItem[], aesthetic?: string): number {
   if (items.length < 2) return 85;
+
   let total = 0;
   let pairs = 0;
   for (let i = 0; i < items.length - 1; i++) {
-    total += colorHarmony(items[i].primary_color, items[i + 1].primary_color);
+    total += pairColorScore(items[i], items[i + 1], aesthetic);
     pairs++;
   }
-  return Math.round(total / pairs);
+  let score = total / pairs;
+
+  // Color echoing: a secondary color on one piece matching another
+  // piece's primary family is a real styling technique (e.g. a jacket's
+  // burgundy lining echoing burgundy shoes) - small bonus, not required.
+  const primaryFamilies = new Set(items.map((i) => colorFamily(i.primary_color)));
+  const hasEcho = items.some((i) => (i.secondary_colors ?? []).some((sc) => primaryFamilies.has(colorFamily(sc))));
+  if (hasEcho) score += 3;
+
+  // Color-count discipline: aesthetics that favor restraint are penalized
+  // for spreading across many distinct non-neutral families; contrast-
+  // forward aesthetics are not.
+  const target = aesthetic?.toLowerCase();
+  const distinctNonNeutral = new Set(items.map((i) => colorFamily(i.primary_color)).filter((f) => f !== "neutral")).size;
+  if ((target === "minimal" || target === "old money" || target === "monochrome") && distinctNonNeutral > 2) {
+    score -= (distinctNonNeutral - 2) * 4;
+  }
+
+  return Math.round(Math.max(35, Math.min(96, score)));
+}
+
+// Used by the diversity ranking (see selectDiverse) - a rough palette
+// "signature" so two outfits with totally different clothing IDs but an
+// almost identical color story (e.g. both all-black-and-white) aren't
+// treated as maximally different just because the item IDs differ.
+function paletteSignature(items: ClothingItem[]): Set<string> {
+  return new Set(items.map((i) => colorFamily(i.primary_color)));
+}
+
+function paletteSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1;
+  const intersection = [...a].filter((f) => b.has(f)).length;
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 1 : intersection / union;
 }
 
 // ============================================================
@@ -201,16 +312,30 @@ function describeItem(item: ClothingItem): string {
   return `${color} ${name}`.toLowerCase();
 }
 
-function paletteDescription(colorScore: number): string {
-  if (colorScore >= 90) return "a clean, cohesive palette";
-  if (colorScore >= 78) return "a complementary palette with just enough contrast";
-  return "a deliberate contrast in tone";
+// Named from the actual hue relationship between the two pieces, not a
+// generic score bucket - "must reflect actual selected clothing" (phase 10).
+function paletteDescription(top: ClothingItem, bottom: ClothingItem): string {
+  const it = colorInfo(top.primary_color);
+  const ib = colorInfo(bottom.primary_color);
+
+  if (it.family === "neutral" && ib.family === "neutral") return "a clean neutral base";
+  if (it.family === ib.family) return "a controlled monochrome base";
+  if (it.family === "neutral" || ib.family === "neutral") return "a neutral anchor with a touch of color";
+
+  if (it.hue !== null && ib.hue !== null) {
+    const rel = hueRelationship(it.hue, ib.hue);
+    if (rel === "complementary") return "bold complementary contrast";
+    if (rel === "analogous") return "an easy, analogous color pairing";
+    if (rel === "triadic") return "a triadic color pairing";
+  }
+  return "a bit of deliberate contrast";
 }
 
 function explain(o: Omit<GeneratedOutfit, "explanation">, filters: OutfitFilters): string {
   const occasion = (filters.occasion ?? "everyday wear").toLowerCase();
   let sentence = `The ${describeItem(o.top)} pairs with the ${describeItem(o.bottom)} for ${paletteDescription(
-    o.colorScore
+    o.top,
+    o.bottom
   )}, while the ${describeItem(o.shoes)} keeps it grounded for ${occasion}.`;
 
   if (o.outerwear) {
@@ -239,6 +364,15 @@ function slotIds(o: GeneratedOutfit): (string | null)[] {
   return [o.bottom.id, o.shoes.id, o.outerwear?.id ?? null, o.accessory?.id ?? null, o.bag?.id ?? null];
 }
 
+function outfitItems(o: GeneratedOutfit): ClothingItem[] {
+  return [o.top, o.bottom, o.shoes, o.outerwear, o.accessory, o.bag].filter((i): i is ClothingItem => !!i);
+}
+
+// Slot-id overlap alone misses "different clothing IDs, same color story"
+// (e.g. two outfits that are both all-black-and-white read as near
+// identical even with zero shared item IDs) and undercounts "same locked
+// item, totally different color direction" as more similar than it is.
+// Blending in palette similarity fixes both without a second ranking system.
 function overlapRatio(a: GeneratedOutfit, b: GeneratedOutfit): number {
   const idsA = slotIds(a);
   const idsB = slotIds(b);
@@ -249,8 +383,10 @@ function overlapRatio(a: GeneratedOutfit, b: GeneratedOutfit): number {
     comparable++;
     if (idsA[i] === idsB[i]) same++;
   }
-  if (comparable === 0) return 1;
-  return same / comparable;
+  const idOverlap = comparable === 0 ? 1 : same / comparable;
+  const colorOverlap = paletteSimilarity(paletteSignature(outfitItems(a)), paletteSignature(outfitItems(b)));
+
+  return idOverlap * 0.75 + colorOverlap * 0.25;
 }
 
 function selectDiverse(sorted: GeneratedOutfit[], limit: number): GeneratedOutfit[] {
@@ -296,7 +432,7 @@ export function scoreComposition(
   const core = [top, bottom, shoes, ...(outerwear ? [outerwear] : [])];
   const finalItems = [core, accessory ? [accessory] : [], bag ? [bag] : []].flat();
 
-  const colorScore = averageColorHarmony(finalItems);
+  const colorScore = averageColorHarmony(finalItems, filters.aesthetic);
   const style = styleScore(finalItems, filters.aesthetic);
   const formality = formalityFit(finalItems);
   const occasion = occasionFit(finalItems, filters.occasion);
@@ -378,7 +514,7 @@ export function generateOutfits(
               const core = [top, bottom, shoe, ...(outerwear ? [outerwear] : [])];
               const finalItems = [core, accessory ? [accessory] : [], bag ? [bag] : []].flat();
 
-              const colorScore = averageColorHarmony(finalItems);
+              const colorScore = averageColorHarmony(finalItems, filters.aesthetic);
               const style = styleScore(finalItems, filters.aesthetic);
               const formality = formalityFit(finalItems);
               const occasion = occasionFit(finalItems, filters.occasion);
