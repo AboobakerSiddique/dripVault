@@ -1,7 +1,7 @@
 ```markdown
-# dripVault
+**dripVault**
 
-> **AI-powered personal wardrobe & outfit intelligence platform.**
+**AI-powered personal wardrobe & outfit intelligence platform.**
 
 dripVault is a full-stack AI fashion assistant that turns your personal wardrobe into an intelligent styling system.
 
@@ -11,7 +11,7 @@ The project is currently under active development, with the UI being redesigned 
 
 ---
 
-## ✦ Current Status
+**✦ Current Status**
 
 **Phase 10 completed and verified.**
 

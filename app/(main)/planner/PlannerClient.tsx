@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import ClothingThumb from "@/components/ClothingThumb";
+import HUDPanel from "@/components/hud/HUDPanel";
+import TechLabel from "@/components/hud/TechLabel";
 import { ClothingItem } from "@/types/clothing";
 
 interface OutfitSummary {
@@ -123,21 +125,24 @@ export default function PlannerClient() {
   };
 
   return (
-    <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
-      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl mb-4">
+    <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <TechLabel className="mb-1">[ SCHEDULE MODULE ]</TechLabel>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }} className="text-xl mb-4">
         OUTFIT PLANNER
       </h1>
 
-      <div className="flex mb-5 rounded-full border p-1" style={{ borderColor: "var(--color-border)" }}>
+      <div className="flex mb-5 rounded border p-1" style={{ borderColor: "var(--color-border)" }}>
         {(["week", "month"] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
-            className="flex-1 py-2 rounded-full text-xs capitalize"
+            className="flex-1 py-2 rounded text-xs uppercase"
             style={{
+              fontFamily: "var(--font-display)",
               background: view === v ? "var(--color-accent)" : "transparent",
-              color: view === v ? "#08080b" : "var(--color-text-muted)",
+              color: view === v ? "#06060a" : "var(--color-text-muted)",
               fontWeight: 600,
+              letterSpacing: "0.06em",
             }}
           >
             {v}
@@ -147,29 +152,27 @@ export default function PlannerClient() {
 
       <div className="flex items-center justify-between mb-5">
         <button onClick={() => navigate(-1)}><ChevronLeft size={18} color="var(--color-text-muted)" /></button>
-        <p className="text-sm">
+        <p className="tech-label">
           {view === "week"
             ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-            : anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+            : anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase()}
         </p>
         <button onClick={() => navigate(1)}><ChevronRight size={18} color="var(--color-text-muted)" /></button>
       </div>
 
       {view === "week" ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {weekDays.map((d) => {
             const iso = toISODate(d);
             const dayPlans = plansByDate.get(iso) ?? [];
             return (
-              <div key={iso} className="rounded-2xl p-3 border" style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}>
+              <HUDPanel key={iso} className="p-3" brackets={false}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                    {d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })}
-                  </p>
+                  <p className="tech-label">{d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" }).toUpperCase()}</p>
                   <button onClick={() => openPicker(iso)}><Plus size={14} color="var(--color-accent)" /></button>
                 </div>
                 {dayPlans.length === 0 ? (
-                  <p className="text-[11px]" style={{ color: "var(--color-text-muted)", opacity: 0.6 }}>No outfit planned</p>
+                  <p className="text-[11px]" style={{ color: "var(--color-text-muted)", opacity: 0.5 }}>No outfit planned</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {dayPlans.map((p) => (
@@ -187,7 +190,7 @@ export default function PlannerClient() {
                     ))}
                   </div>
                 )}
-              </div>
+              </HUDPanel>
             );
           })}
         </div>
@@ -195,7 +198,7 @@ export default function PlannerClient() {
         <>
           <div className="grid grid-cols-7 gap-1 mb-2">
             {DOW.map((d) => (
-              <p key={d} className="text-[10px] text-center" style={{ color: "var(--color-text-muted)" }}>{d}</p>
+              <p key={d} className="tech-label text-center">{d.toUpperCase()}</p>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1 mb-4">
@@ -207,21 +210,21 @@ export default function PlannerClient() {
                 <button
                   key={iso}
                   onClick={() => setSelectedDate(iso)}
-                  className="aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative"
+                  className="aspect-square rounded flex flex-col items-center justify-center text-xs relative mono"
                   style={{
                     background: selectedDate === iso ? "var(--color-accent-dim)" : "var(--color-bg-2)",
                     border: `1px solid ${selectedDate === iso ? "var(--color-accent)" : "var(--color-border)"}`,
                   }}
                 >
                   {d.getDate()}
-                  {hasPlans && <span style={{ position: "absolute", bottom: 3, width: 4, height: 4, borderRadius: "50%", background: "var(--color-accent)" }} />}
+                  {hasPlans && <span style={{ position: "absolute", bottom: 3, width: 4, height: 4, borderRadius: "50%", background: "var(--color-cyan)" }} />}
                 </button>
               );
             })}
           </div>
 
           {selectedDate && (
-            <div className="rounded-2xl p-4 border" style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}>
+            <HUDPanel className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
                 <button onClick={() => openPicker(selectedDate)}><Plus size={16} color="var(--color-accent)" /></button>
@@ -243,20 +246,20 @@ export default function PlannerClient() {
                   ))}
                 </div>
               )}
-            </div>
+            </HUDPanel>
           )}
         </>
       )}
 
       {/* Outfit picker */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setPickerOpen(null)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(6,6,10,0.85)" }} onClick={() => setPickerOpen(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-2xl p-5 border"
+            className="w-full max-w-md rounded-t-2xl p-5 border hud-grid-bg"
             style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", maxHeight: "70vh", overflowY: "auto" }}
           >
-            <p className="text-sm mb-4">Assign an outfit to {pickerOpen}</p>
+            <TechLabel className="mb-4">ASSIGN OUTFIT TO {pickerOpen}</TechLabel>
             {!savedOutfits ? (
               <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Loading...</p>
             ) : savedOutfits.length === 0 ? (
@@ -264,18 +267,15 @@ export default function PlannerClient() {
             ) : (
               <div className="flex flex-col gap-2">
                 {savedOutfits.map((o) => (
-                  <button
-                    key={o.id}
-                    onClick={() => assign(o.id)}
-                    className="flex items-center gap-2 p-2 rounded-xl border text-left"
-                    style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
-                  >
-                    <div className="flex gap-1">
-                      {o.outfit_items.slice(0, 3).map((oi) => (
-                        <ClothingThumb key={oi.clothing_items.id} imageUrl={oi.clothing_items.image_url} name={oi.clothing_items.name} category={oi.clothing_items.category} color={oi.clothing_items.primary_color} size={36} />
-                      ))}
-                    </div>
-                    <p className="text-xs capitalize">{o.aesthetic ?? "Outfit"}</p>
+                  <button key={o.id} onClick={() => assign(o.id)} className="text-left block">
+                    <HUDPanel className="flex items-center gap-2 p-2" brackets={false}>
+                      <div className="flex gap-1">
+                        {o.outfit_items.slice(0, 3).map((oi) => (
+                          <ClothingThumb key={oi.clothing_items.id} imageUrl={oi.clothing_items.image_url} name={oi.clothing_items.name} category={oi.clothing_items.category} color={oi.clothing_items.primary_color} size={36} />
+                        ))}
+                      </div>
+                      <p className="text-xs capitalize">{o.aesthetic ?? "Outfit"}</p>
+                    </HUDPanel>
                   </button>
                 ))}
               </div>

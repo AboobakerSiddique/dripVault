@@ -39,6 +39,7 @@ interface SaveOutfitBody {
   aesthetic?: string;
   weather?: string;
   score?: number;
+  scoreBreakdown?: { color: number; weather: number; aesthetic: number; occasion: number; layering: number };
   explanation?: string;
   items: { clothingItemId: string; role: "top" | "bottom" | "shoes" | "outerwear" | "accessory" | "bag" }[];
 }
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
       aesthetic: body.aesthetic,
       weather: body.weather,
       score: body.score,
+      score_breakdown: body.scoreBreakdown,
       explanation: body.explanation,
     })
     .select()

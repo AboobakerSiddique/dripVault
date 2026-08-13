@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Heart, ThumbsDown, ThumbsUp, CheckCircle2, CalendarPlus } from "lucide-react";
+import HUDPanel from "@/components/hud/HUDPanel";
+import TechLabel from "@/components/hud/TechLabel";
 
 const NOTE_LIMIT = 100;
 const PLAN_NOTE_LIMIT = 150;
@@ -60,7 +62,7 @@ export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId
   return (
     <div className="mt-6">
       {/* Note */}
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>NOTE</p>
+      <TechLabel className="mb-2">NOTE</TechLabel>
       <textarea
         value={note}
         onChange={(e) => {
@@ -70,15 +72,15 @@ export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId
         onBlur={saveNote}
         placeholder="e.g. Perfect for Friday dinner"
         rows={2}
-        className="w-full mb-1 px-3 py-2 rounded-lg text-sm outline-none border resize-none"
+        className="w-full mb-1 px-3 py-2 rounded text-sm outline-none border resize-none"
         style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
       />
-      <p className="text-[10px] mb-5" style={{ color: noteSaved ? "var(--color-text-muted)" : "var(--color-accent)" }}>
+      <p className="text-[10px] mb-5 mono" style={{ color: noteSaved ? "var(--color-text-muted)" : "var(--color-accent)" }}>
         {note.length}/{NOTE_LIMIT}{!noteSaved ? " · saving on blur..." : ""}
       </p>
 
       {/* Feedback */}
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>How do you feel about this one?</p>
+      <TechLabel className="mb-2">HOW DO YOU FEEL ABOUT THIS ONE?</TechLabel>
       <div className="flex gap-2 mb-4">
         {[
           { key: "love", icon: Heart, label: "LOVE" },
@@ -89,10 +91,11 @@ export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId
             key={key}
             disabled={busy}
             onClick={() => sendFeedback(key)}
-            className="flex-1 py-2 rounded-full text-xs flex items-center justify-center gap-1 disabled:opacity-50"
+            className="flex-1 py-2 rounded text-xs flex items-center justify-center gap-1 disabled:opacity-50"
             style={{
               border: `1px solid ${feedbackSent === key ? "var(--color-accent)" : "var(--color-border)"}`,
               color: feedbackSent === key ? "var(--color-accent)" : "var(--color-text-muted)",
+              boxShadow: feedbackSent === key ? "0 0 12px rgba(157,140,255,0.25)" : "none",
             }}
           >
             <Icon size={13} /> {label}
@@ -115,21 +118,21 @@ export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId
           <CalendarPlus size={16} /> ADD TO PLANNER
         </button>
       ) : (
-        <div className="rounded-2xl p-4 border" style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}>
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Date</p>
+        <HUDPanel className="p-4">
+          <TechLabel className="mb-2">DATE</TechLabel>
           <input
             type="date"
             value={planDate}
             onChange={(e) => setPlanDate(e.target.value)}
-            className="w-full mb-3 px-3 py-2 rounded-lg text-sm outline-none border"
+            className="w-full mb-3 px-3 py-2 rounded text-sm outline-none border"
             style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
           />
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Note (optional)</p>
+          <TechLabel className="mb-2">NOTE (OPTIONAL)</TechLabel>
           <input
             value={planNote}
             onChange={(e) => setPlanNote(e.target.value.slice(0, PLAN_NOTE_LIMIT))}
             placeholder="e.g. College"
-            className="w-full mb-3 px-3 py-2 rounded-lg text-sm outline-none border"
+            className="w-full mb-3 px-3 py-2 rounded text-sm outline-none border"
             style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
           />
           <button
@@ -139,8 +142,8 @@ export default function OutfitDetailClient({ outfitId, initialNote }: { outfitId
           >
             {planStatus === "saved" ? "ADDED ✓" : planStatus === "saving" ? "ADDING..." : "CONFIRM"}
           </button>
-          {planStatus === "error" && <p className="text-[10px] mt-2" style={{ color: "#ff6b6b" }}>Couldn&apos;t add to planner.</p>}
-        </div>
+          {planStatus === "error" && <p className="text-[10px] mt-2" style={{ color: "var(--color-danger)" }}>Couldn&apos;t add to planner.</p>}
+        </HUDPanel>
       )}
     </div>
   );

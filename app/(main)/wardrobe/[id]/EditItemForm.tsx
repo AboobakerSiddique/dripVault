@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, Heart, Loader2, Trash2 } from "lucide-react";
 import Chip from "@/components/Chip";
 import ClothingThumb from "@/components/ClothingThumb";
+import HUDPanel from "@/components/hud/HUDPanel";
+import TechLabel from "@/components/hud/TechLabel";
 import { ClothingCategory, ClothingItem } from "@/types/clothing";
 
 const CATS: ClothingCategory[] = ["top", "bottom", "shoes", "accessory", "bag", "outerwear"];
@@ -70,61 +72,62 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
   };
 
   return (
-    <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <div className="flex items-center gap-3 mb-1">
         <button onClick={() => router.push("/wardrobe")}>
           <ChevronLeft size={20} color="var(--color-text-muted)" />
         </button>
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl">
-          EDIT ITEM
-        </h1>
+        <TechLabel>[ ITEM RECORD ]</TechLabel>
+      </div>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }} className="text-xl mb-5">
+        EDIT ITEM
+      </h1>
+
+      <div className="flex justify-center mb-6">
+        <HUDPanel className="p-2 relative" glow>
+          <ClothingThumb imageUrl={item.image_url} name={item.name} category={category} color={primaryColor} size={140} />
+          <button
+            onClick={() => setFavorite((f) => !f)}
+            className="absolute top-2 right-2 rounded flex items-center justify-center"
+            style={{ width: 30, height: 30, background: "rgba(6,6,10,0.75)" }}
+          >
+            <Heart size={15} color={favorite ? "var(--color-danger)" : "#fff"} fill={favorite ? "var(--color-danger)" : "none"} />
+          </button>
+        </HUDPanel>
       </div>
 
-      <div className="flex justify-center mb-6 relative">
-        <ClothingThumb imageUrl={item.image_url} name={item.name} category={category} color={primaryColor} size={140} />
-        <button
-          onClick={() => setFavorite((f) => !f)}
-          className="absolute rounded-full flex items-center justify-center"
-          style={{ top: "calc(50% - 70px)", left: "calc(50% + 40px)", width: 32, height: 32, background: "rgba(8,8,11,0.7)" }}
-        >
-          <Heart size={16} color={favorite ? "#ff6b6b" : "#fff"} fill={favorite ? "#ff6b6b" : "none"} />
-        </button>
-      </div>
-
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Category</p>
+      <TechLabel className="mb-2">CATEGORY</TechLabel>
       <div className="flex flex-wrap mb-4">
         {CATS.map((c) => (
           <Chip key={c} label={c} active={category === c} onClick={() => setCategory(c)} />
         ))}
       </div>
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Color</p>
+      <TechLabel className="mb-2">COLOR</TechLabel>
       <input
         value={primaryColor}
         onChange={(e) => setPrimaryColor(e.target.value)}
-        className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
+        className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border"
         style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
       />
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Fit</p>
+      <TechLabel className="mb-2">FIT</TechLabel>
       <div className="flex flex-wrap mb-4">
         {FITS.map((f) => (
           <Chip key={f} label={f} active={fit === f} onClick={() => setFit(f)} />
         ))}
       </div>
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Material</p>
+      <TechLabel className="mb-2">MATERIAL</TechLabel>
       <input
         value={material}
         onChange={(e) => setMaterial(e.target.value)}
         placeholder="e.g. cotton"
-        className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
+        className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border"
         style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
       />
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>
-        Formality ({formality}/10)
-      </p>
+      <TechLabel className="mb-2">FORMALITY ({formality}/10)</TechLabel>
       <input
         type="range"
         min={1}
@@ -134,31 +137,29 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
         className="w-full mb-4"
       />
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Style tags (comma separated)</p>
+      <TechLabel className="mb-2">STYLE TAGS</TechLabel>
       <input
         value={styleText}
         onChange={(e) => setStyleText(e.target.value)}
-        className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
+        className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border"
         style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
       />
 
-      <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Season (comma separated)</p>
+      <TechLabel className="mb-2">SEASON</TechLabel>
       <input
         value={seasonText}
         onChange={(e) => setSeasonText(e.target.value)}
         placeholder="e.g. summer, spring"
-        className="w-full mb-6 px-3 py-2.5 rounded-lg text-sm outline-none border"
+        className="w-full mb-6 px-3 py-2.5 rounded text-sm outline-none border"
         style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
       />
 
-      {error && (
-        <p className="text-xs mb-4" style={{ color: "#ff6b6b" }}>{error}</p>
-      )}
+      {error && <p className="text-xs mb-4" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <button
         onClick={save}
         disabled={saving}
-        className="btn-chrome w-full py-3 flex items-center justify-center gap-2 mb-4 disabled:opacity-50"
+        className="btn-chrome w-full py-3.5 flex items-center justify-center gap-2 mb-4 disabled:opacity-50"
       >
         {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
         {saving ? "SAVING..." : "SAVE CHANGES"}
@@ -167,14 +168,14 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
       {!confirmingDelete ? (
         <button
           onClick={() => setConfirmingDelete(true)}
-          className="w-full py-3 flex items-center justify-center gap-2 text-xs rounded-full border"
-          style={{ borderColor: "#ff6b6b", color: "#ff6b6b" }}
+          className="w-full py-3 flex items-center justify-center gap-2 text-xs rounded border"
+          style={{ borderColor: "var(--color-danger)", color: "var(--color-danger)" }}
         >
           <Trash2 size={14} /> DELETE THIS ITEM
         </button>
       ) : (
-        <div className="rounded-2xl p-4 border" style={{ borderColor: "#ff6b6b", background: "rgba(255,107,107,0.08)" }}>
-          <p className="text-sm mb-1" style={{ color: "var(--color-text)" }}>Delete this clothing item?</p>
+        <HUDPanel className="p-4" brackets={false} glow>
+          <p className="text-sm mb-1">Delete this clothing item?</p>
           <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>
             This will remove it from your wardrobe. This can&apos;t be undone.
           </p>
@@ -182,20 +183,16 @@ export default function EditItemForm({ item }: { item: ClothingItem }) {
             <button
               onClick={confirmDelete}
               disabled={deleting}
-              className="flex-1 py-2 rounded-full text-xs disabled:opacity-50"
-              style={{ background: "#ff6b6b", color: "#08080b", fontWeight: 600 }}
+              className="flex-1 py-2 rounded text-xs disabled:opacity-50"
+              style={{ background: "var(--color-danger)", color: "#06060a", fontWeight: 600 }}
             >
               {deleting ? "DELETING..." : "YES, DELETE"}
             </button>
-            <button
-              onClick={() => setConfirmingDelete(false)}
-              disabled={deleting}
-              className="flex-1 py-2 rounded-full text-xs btn-outline"
-            >
+            <button onClick={() => setConfirmingDelete(false)} disabled={deleting} className="flex-1 py-2 rounded text-xs btn-outline">
               CANCEL
             </button>
           </div>
-        </div>
+        </HUDPanel>
       )}
     </div>
   );

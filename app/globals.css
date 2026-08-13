@@ -1,16 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg-0: #08080b;
-  --color-bg-1: #121218;
-  --color-bg-2: #1a1a22;
-  --color-border: #2d2d3a;
-  --color-accent: #75c6ff;
-  --color-accent-dim: rgba(117, 198, 255, 0.15);
-  --color-text: #f4f5f7;
-  --color-text-muted: #8a8a96;
+  /* Near-black cyberpunk base, evolved from the old chrome palette but
+     keeping the same variable NAMES so every existing page/component
+     inherits the new system without being touched individually. */
+  --color-bg-0: #06060a;
+  --color-bg-1: #0b0b13;
+  --color-bg-2: #10101a;
+  --color-border: #2a2a45;
+  --color-accent: #9d8cff;       /* primary blue-violet neon */
+  --color-accent-dim: rgba(157, 140, 255, 0.14);
+  --color-cyan: #5eead4;          /* restrained secondary accent */
+  --color-cyan-dim: rgba(94, 234, 212, 0.14);
+  --color-text: #eef0ff;
+  --color-text-muted: #7d7d99;
+  --color-danger: #ff6b6b;
   --font-display: var(--font-orbitron);
   --font-body: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 @theme inline {
@@ -19,30 +26,76 @@
   --color-bg-2: var(--color-bg-2);
   --color-border: var(--color-border);
   --color-accent: var(--color-accent);
+  --color-cyan: var(--color-cyan);
   --color-text: var(--color-text);
   --color-text-muted: var(--color-text-muted);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--color-bg-0);
+  background:
+    radial-gradient(ellipse 900px 500px at 50% -10%, rgba(157, 140, 255, 0.08), transparent),
+    var(--color-bg-0);
   color: var(--color-text);
   font-family: var(--font-body);
+  position: relative;
 }
 
+/* Extremely subtle scanline texture over the whole app - a CRT hint,
+   not a gimmick. Fixed so it doesn't scroll with content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.012) 0px,
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.5;
+}
+
+.tech-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.hud-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(157, 140, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(157, 140, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Buttons - sharper HUD rectangles instead of pills, kept as the same
+   class names (.btn-chrome / .btn-outline) so every page using them
+   picks up the new look automatically. */
 .btn-chrome {
   font-family: var(--font-display);
   letter-spacing: 0.08em;
-  border-radius: 9999px;
-  background: linear-gradient(180deg, #2a2f3a 0%, #14161c 100%);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(157, 140, 255, 0.16) 0%, rgba(10, 10, 16, 0.9) 100%);
   border: 1px solid var(--color-accent);
-  box-shadow: 0 0 0 1px rgba(117, 198, 255, 0.15), 0 0 18px rgba(117, 198, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(157, 140, 255, 0.15), 0 0 20px rgba(157, 140, 255, 0.22), inset 0 0 12px rgba(157, 140, 255, 0.06);
   color: var(--color-text);
   transition: box-shadow 0.2s ease, transform 0.15s ease;
+  position: relative;
 }
 .btn-chrome:hover {
-  box-shadow: 0 0 0 1px rgba(117, 198, 255, 0.35), 0 0 26px rgba(117, 198, 255, 0.4);
+  box-shadow: 0 0 0 1px rgba(157, 140, 255, 0.4), 0 0 30px rgba(157, 140, 255, 0.35), inset 0 0 12px rgba(157, 140, 255, 0.1);
 }
 .btn-chrome:active {
   transform: scale(0.98);
@@ -51,21 +104,66 @@ body {
 .btn-outline {
   font-family: var(--font-display);
   letter-spacing: 0.08em;
-  border-radius: 9999px;
+  border-radius: 6px;
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  background: transparent;
+  background: rgba(157, 140, 255, 0.03);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.btn-outline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .chip {
-  font-family: var(--font-body);
-  border-radius: 9999px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 .chip[data-active="true"] {
   border-color: var(--color-accent);
   color: var(--color-accent);
-  box-shadow: 0 0 12px rgba(117, 198, 255, 0.25);
+  box-shadow: 0 0 12px rgba(157, 140, 255, 0.25);
+  background: var(--color-accent-dim);
+}
+
+/* HUD panel - the base "interface panel" surface used by HUDPanel.tsx.
+   Corner brackets are rendered as real elements in that component (more
+   reliable across border-radius combos than pseudo-element tricks). */
+.hud-panel {
+  background: linear-gradient(180deg, rgba(157, 140, 255, 0.035) 0%, rgba(255, 255, 255, 0) 40%), var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  position: relative;
+}
+
+.hud-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pulse-dot {
+  animation: pulse-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes scan-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.btn-chrome::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
 }

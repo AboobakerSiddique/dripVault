@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Plus, Sparkles, User } from "lucide-react";
+import { Home, LayoutGrid, Plus, Calendar, User } from "lucide-react";
 
 const items = [
-  { href: "/home", icon: Home },
-  { href: "/wardrobe", icon: LayoutGrid },
-  { href: "/add", icon: Plus, center: true },
-  { href: "/generate", icon: Sparkles },
-  { href: "/profile", icon: User },
+  { href: "/home", icon: Home, label: "HOME" },
+  { href: "/wardrobe", icon: LayoutGrid, label: "WARDROBE" },
+  { href: "/add", icon: Plus, label: "", center: true },
+  { href: "/planner", icon: Calendar, label: "PLANNER" },
+  { href: "/profile", icon: User, label: "PROFILE" },
 ];
 
 export default function BottomNav() {
@@ -17,10 +17,10 @@ export default function BottomNav() {
 
   return (
     <div
-      className="flex items-center justify-between px-6 py-3 border-t"
+      className="flex items-end justify-between px-5 pt-3 pb-4 border-t relative"
       style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)" }}
     >
-      {items.map(({ href, icon: Icon, center }) => {
+      {items.map(({ href, icon: Icon, label, center }) => {
         const active = pathname === href;
         if (center) {
           return (
@@ -28,15 +28,19 @@ export default function BottomNav() {
               key={href}
               href={href}
               className="btn-chrome rounded-full flex items-center justify-center"
-              style={{ width: 46, height: 46 }}
+              style={{ width: 52, height: 52, marginTop: -20 }}
             >
-              <Icon size={20} />
+              <Icon size={22} />
             </Link>
           );
         }
         return (
-          <Link key={href} href={href} className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
-            <Icon size={20} color={active ? "var(--color-accent)" : "var(--color-text-muted)"} />
+          <Link key={href} href={href} className="flex flex-col items-center gap-1" style={{ width: 44 }}>
+            <Icon size={19} color={active ? "var(--color-accent)" : "var(--color-text-muted)"} />
+            <span className="tech-label" style={{ fontSize: 8, color: active ? "var(--color-accent)" : "var(--color-text-muted)" }}>
+              {label}
+            </span>
+            {active && <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--color-accent)", boxShadow: "0 0 6px var(--color-accent)" }} />}
           </Link>
         );
       })}

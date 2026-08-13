@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ImagePlus, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, Loader2, ScanLine } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ClothingCategory } from "@/types/clothing";
 import Chip from "@/components/Chip";
+import HUDPanel from "@/components/hud/HUDPanel";
+import TechLabel from "@/components/hud/TechLabel";
 
 const CATS: ClothingCategory[] = ["top", "bottom", "shoes", "accessory", "bag", "outerwear"];
 
@@ -199,108 +201,111 @@ export default function AddPage() {
   };
 
   return (
-    <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <div className="flex items-center gap-3 mb-1">
         <button onClick={() => router.push("/wardrobe")}>
           <ChevronLeft size={20} color="var(--color-text-muted)" />
         </button>
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl">
-          ADD CLOTHING
-        </h1>
+        <TechLabel>[ WARDROBE INTAKE ]</TechLabel>
       </div>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }} className="text-xl mb-5">
+        SCAN / ANALYZE ITEM
+      </h1>
 
-      <label
-        className="rounded-2xl mb-5 flex flex-col items-center justify-center border border-dashed cursor-pointer overflow-hidden"
-        style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", minHeight: 180 }}
-      >
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && onFileSelected(e.target.files[0])}
-        />
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Preview" className="w-full h-44 object-cover" />
-        ) : (
-          <div className="flex flex-col items-center py-8">
-            <ImagePlus size={22} color="var(--color-text-muted)" />
-            <p className="text-xs mt-2 text-center px-4" style={{ color: "var(--color-text-muted)" }}>
-              Tap to take a photo or upload one - color, style, and category are detected automatically
-            </p>
-          </div>
-        )}
+      <label className="block mb-5 cursor-pointer">
+        <HUDPanel className="overflow-hidden hud-grid-bg" glow={analyzing}>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && onFileSelected(e.target.files[0])}
+          />
+          {preview ? (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview} alt="Preview" className="w-full h-52 object-cover" style={{ opacity: analyzing ? 0.55 : 1 }} />
+              {analyzing && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <Loader2 size={20} className="animate-spin" color="var(--color-accent)" />
+                  <p className="tech-label" style={{ color: "var(--color-accent)" }}>ANALYZING WARDROBE ITEM...</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center py-10">
+              <ScanLine size={22} color="var(--color-accent)" />
+              <p className="tech-label mt-3 text-center px-6">TAP TO SCAN OR UPLOAD PHOTO</p>
+              <p className="text-[10px] mt-1 text-center px-8" style={{ color: "var(--color-text-muted)" }}>
+                Color, category, and style detected automatically
+              </p>
+            </div>
+          )}
+        </HUDPanel>
       </label>
 
       {duplicateOf && (
-        <div className="rounded-2xl p-4 mb-5 border" style={{ borderColor: "var(--color-accent)", background: "var(--color-accent-dim)" }}>
-          <p className="text-sm mb-1">This item already exists in your wardrobe</p>
+        <HUDPanel className="p-4 mb-5" glow>
+          <p className="tech-label mb-1" style={{ color: "var(--color-accent)" }}>[ DUPLICATE DETECTED ]</p>
+          <p className="text-sm mb-1 mt-2">This item already exists in your wardrobe</p>
           <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>Saved as &quot;{duplicateOf.name}&quot;</p>
           <Link href={`/wardrobe/${duplicateOf.id}`} className="btn-outline inline-block px-4 py-2 text-xs">
             VIEW EXISTING ITEM
           </Link>
-        </div>
-      )}
-
-      {analyzing && (
-        <div className="flex items-center gap-2 mb-5 text-sm" style={{ color: "var(--color-accent)" }}>
-          <Loader2 size={16} className="animate-spin" /> Analyzing item...
-        </div>
+        </HUDPanel>
       )}
 
       {error && (
-        <p className="text-xs mb-4" style={{ color: "#ff6b6b" }}>
+        <p className="text-xs mb-4" style={{ color: "var(--color-danger)" }}>
           {error}
         </p>
       )}
 
       {analysis && !analyzing && !duplicateOf && (
         <>
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Name</p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
-            style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          />
+          <HUDPanel className="p-4 mb-5">
+            <TechLabel className="mb-3">[ ANALYSIS COMPLETE ]</TechLabel>
 
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Category (AI detected — tap to correct)</p>
-          <div className="flex flex-wrap mb-4">
-            {CATS.map((c) => (
-              <Chip
-                key={c}
-                label={c}
-                active={analysis.category === c}
-                onClick={() => setAnalysis({ ...analysis, category: c })}
-              />
-            ))}
-          </div>
+            <p className="tech-label mb-2">NAME</p>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border"
+              style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            />
 
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Color (AI detected — edit freely)</p>
-          <input
-            value={analysis.primary_color}
-            onChange={(e) => setAnalysis({ ...analysis, primary_color: e.target.value })}
-            placeholder="e.g. olive green"
-            className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
-            style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          />
+            <p className="tech-label mb-2">CATEGORY — TAP TO CORRECT</p>
+            <div className="flex flex-wrap mb-4">
+              {CATS.map((c) => (
+                <Chip key={c} label={c} active={analysis.category === c} onClick={() => setAnalysis({ ...analysis, category: c })} />
+              ))}
+            </div>
 
-          <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>Style tags (comma separated)</p>
-          <input
-            value={styleText}
-            onChange={(e) => setStyleText(e.target.value)}
-            className="w-full mb-6 px-3 py-2.5 rounded-lg text-sm outline-none border"
-            style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          />
+            <p className="tech-label mb-2">COLOR — EDIT FREELY</p>
+            <input
+              value={analysis.primary_color}
+              onChange={(e) => setAnalysis({ ...analysis, primary_color: e.target.value })}
+              placeholder="e.g. olive green"
+              className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border"
+              style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            />
+
+            <p className="tech-label mb-2">STYLE TAGS</p>
+            <input
+              value={styleText}
+              onChange={(e) => setStyleText(e.target.value)}
+              className="w-full px-3 py-2.5 rounded text-sm outline-none border"
+              style={{ background: "var(--color-bg-1)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            />
+          </HUDPanel>
 
           <button
             onClick={save}
             disabled={saving}
-            className="btn-chrome w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="btn-chrome w-full py-3.5 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            {saving ? "SAVING..." : "SAVE ITEM"}
+            {saving ? "SAVING..." : "ADD TO WARDROBE"}
           </button>
         </>
       )}

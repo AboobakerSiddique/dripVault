@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Heart, Search } from "lucide-react";
+import { Heart, Search, Plus } from "lucide-react";
 import ClothingThumb from "@/components/ClothingThumb";
 import Chip from "@/components/Chip";
+import HUDPanel from "@/components/hud/HUDPanel";
+import TechLabel from "@/components/hud/TechLabel";
 import { ClothingCategory, ClothingItem } from "@/types/clothing";
 
 const CATS: { value: ClothingCategory | "all" | "favorites"; label: string }[] = [
@@ -37,8 +39,6 @@ export default function WardrobeClient({ items: initialItems }: { items: Clothin
     });
   }, [items, category, query]);
 
-  // Optimistic toggle, persisted through the existing edit route (favorite
-  // is already whitelisted there) - reuses existing infra, no new endpoint.
   const toggleFavorite = async (e: React.MouseEvent, item: ClothingItem) => {
     e.preventDefault();
     e.stopPropagation();
@@ -49,15 +49,19 @@ export default function WardrobeClient({ items: initialItems }: { items: Clothin
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ favorite: next }),
     });
-    if (!res.ok) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, favorite: !next } : i))); // revert on failure
-    }
+    if (!res.ok) setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, favorite: !next } : i)));
   };
 
   return (
-    <div className="px-5 pt-8 pb-4 max-w-md mx-auto">
+    <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+      <div className="flex items-center justify-between mb-1">
+        <TechLabel>[ INVENTORY ]</TechLabel>
+        <Link href="/add" className="tech-label flex items-center gap-1" style={{ color: "var(--color-accent)" }}>
+          <Plus size={11} /> ADD
+        </Link>
+      </div>
       <div className="flex items-center justify-between mb-4">
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-xl">
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }} className="text-xl">
           MY WARDROBE
         </h1>
         <button onClick={() => setSearchOpen((s) => !s)}>
@@ -71,7 +75,7 @@ export default function WardrobeClient({ items: initialItems }: { items: Clothin
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, color, or style..."
-          className="w-full mb-4 px-3 py-2.5 rounded-lg text-sm outline-none border"
+          className="w-full mb-4 px-3 py-2.5 rounded text-sm outline-none border mono"
           style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
         />
       )}
@@ -82,39 +86,34 @@ export default function WardrobeClient({ items: initialItems }: { items: Clothin
         ))}
       </div>
 
-      <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>
-        {filtered.length} of {items.length} items
+      <p className="tech-label mb-3">
+        {filtered.length} / {items.length} ITEMS
       </p>
 
       {items.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center border" style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}>
+        <HUDPanel className="p-8 text-center">
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>No clothes added yet</p>
-        </div>
+        </HUDPanel>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-center py-8" style={{ color: "var(--color-text-muted)" }}>
           No items match {searchOpen && query ? `"${query}"` : "this filter"}.
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           {filtered.map((item) => (
-            <Link
-              key={item.id}
-              href={`/wardrobe/${item.id}`}
-              className="rounded-xl p-2.5 border block relative"
-              style={{ background: "var(--color-bg-2)", borderColor: "var(--color-border)" }}
-            >
-              <button
-                onClick={(e) => toggleFavorite(e, item)}
-                className="absolute top-1.5 right-1.5 z-10 rounded-full flex items-center justify-center transition-transform active:scale-90"
-                style={{ width: 26, height: 26, background: "rgba(8,8,11,0.65)" }}
-              >
-                <Heart size={13} color={item.favorite ? "#ff6b6b" : "#fff"} fill={item.favorite ? "#ff6b6b" : "none"} />
-              </button>
-              <ClothingThumb imageUrl={item.image_url} name={item.name} category={item.category} color={item.primary_color} fill />
-              <p className="text-xs mt-2" style={{ fontWeight: 500 }}>{item.name}</p>
-              <p className="text-[11px] mt-0.5 capitalize" style={{ color: "var(--color-text-muted)" }}>
-                {item.style?.[0] ?? item.primary_color}
-              </p>
+            <Link key={item.id} href={`/wardrobe/${item.id}`} className="block relative">
+              <HUDPanel className="p-2" brackets={false}>
+                <button
+                  onClick={(e) => toggleFavorite(e, item)}
+                  className="absolute top-1.5 right-1.5 z-10 rounded flex items-center justify-center transition-transform active:scale-90"
+                  style={{ width: 24, height: 24, background: "rgba(6,6,10,0.75)" }}
+                >
+                  <Heart size={12} color={item.favorite ? "var(--color-danger)" : "#fff"} fill={item.favorite ? "var(--color-danger)" : "none"} />
+                </button>
+                <ClothingThumb imageUrl={item.image_url} name={item.name} category={item.category} color={item.primary_color} fill />
+                <p className="text-[11px] mt-2 truncate">{item.name}</p>
+                <p className="tech-label mt-0.5">{item.style?.[0] ?? item.primary_color}</p>
+              </HUDPanel>
             </Link>
           ))}
         </div>

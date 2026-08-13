@@ -25,6 +25,8 @@ export async function geocodeCity(city: string): Promise<GeocodeResult | null> {
 
 export interface CurrentWeather {
   temperatureC: number;
+  feelsLikeC: number;
+  humidityPercent: number;
   precipitationProbability: number;
   weatherCode: number;
   mapped: DripVaultWeather;
@@ -43,7 +45,7 @@ export function mapToDripVaultWeather(temperatureC: number, precipitationProbabi
 }
 
 export async function fetchCurrentWeather(latitude: number, longitude: number): Promise<CurrentWeather | null> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation_probability,weather_code`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,weather_code`;
   const res = await fetch(url);
   if (!res.ok) return null;
   const data = await res.json();
@@ -51,11 +53,15 @@ export async function fetchCurrentWeather(latitude: number, longitude: number): 
   if (!current) return null;
 
   const temperatureC = current.temperature_2m;
+  const feelsLikeC = current.apparent_temperature ?? temperatureC;
+  const humidityPercent = current.relative_humidity_2m ?? 0;
   const precipitationProbability = current.precipitation_probability ?? 0;
   const weatherCode = current.weather_code ?? 0;
 
   return {
     temperatureC,
+    feelsLikeC,
+    humidityPercent,
     precipitationProbability,
     weatherCode,
     mapped: mapToDripVaultWeather(temperatureC, precipitationProbability, weatherCode),
