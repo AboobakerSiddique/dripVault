@@ -33,11 +33,15 @@ export default function Header() {
           width={528}
           height={284}
           priority
-          className="h-14 w-auto max-w-[62%]"
+          className="h-25 w-auto max-w-[62%]"
           style={{ filter: "drop-shadow(0 0 20px rgba(157,140,255,0.5))" }}
         />
         <Link href="/history" aria-label="Outfit history" className="relative">
-          <History size={19} color="var(--color-accent)" style={{ filter: "drop-shadow(0 0 4px rgba(157,140,255,0.6))" }} />
+          <History
+            size={19}
+            color="#7d7d99"
+            
+          />
         </Link>
       </div>
 
