@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
-import { Bell, Menu, X } from "lucide-react";
+import { History, Menu, X } from "lucide-react";
 
 const MENU_LINKS = [
   { href: "/home", label: "Home" },
@@ -27,10 +27,17 @@ export default function Header() {
         <button onClick={() => setMenuOpen(true)} aria-label="Menu">
           <Menu size={20} color="var(--color-text-muted)" />
         </button>
-        <Image src="/logo.png" alt="dripVault" width={528} height={284} priority className="h-9 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(157,140,255,0.35))" }} />
-        <Link href="/history" aria-label="Notifications / activity" className="relative">
-          <Bell size={19} color="var(--color-text-muted)" />
-          <span style={{ position: "absolute", top: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "var(--color-cyan)" }} />
+        <Image
+          src="/logo.png"
+          alt="dripVault"
+          width={528}
+          height={284}
+          priority
+          className="h-14 w-auto max-w-[62%]"
+          style={{ filter: "drop-shadow(0 0 20px rgba(157,140,255,0.5))" }}
+        />
+        <Link href="/history" aria-label="Outfit history" className="relative">
+          <History size={19} color="var(--color-accent)" style={{ filter: "drop-shadow(0 0 4px rgba(157,140,255,0.6))" }} />
         </Link>
       </div>
 
