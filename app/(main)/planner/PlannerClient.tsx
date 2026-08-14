@@ -24,8 +24,16 @@ interface Plan {
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
+
+
+
+
 function startOfWeek(d: Date): Date {
   const day = (d.getDay() + 6) % 7; // Monday = 0
   const start = new Date(d);
@@ -226,7 +234,16 @@ export default function PlannerClient() {
           {selectedDate && (
             <HUDPanel className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+                <p className="text-sm">
+  {(() => {
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  })()}
+</p>
                 <button onClick={() => openPicker(selectedDate)}><Plus size={16} color="var(--color-accent)" /></button>
               </div>
               {(plansByDate.get(selectedDate) ?? []).length === 0 ? (
