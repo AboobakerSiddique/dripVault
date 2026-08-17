@@ -7,6 +7,8 @@ import HUDPanel from "@/components/hud/HUDPanel";
 import TechLabel from "@/components/hud/TechLabel";
 import StatusIndicator from "@/components/hud/StatusIndicator";
 import ScoreBar from "@/components/hud/ScoreBar";
+import DashboardPlanner from "@/components/DashboardPlanner";
+import { ClothingItem } from "@/types/clothing";
 
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -49,7 +51,7 @@ export default async function HomePage() {
       supabase.from("outfit_plans").select("planned_date").eq("user_id", user!.id).gte("planned_date", monthStart).lte("planned_date", monthEnd),
       supabase
         .from("outfit_plans")
-        .select("planned_date, note, outfits(aesthetic, outfit_items(role, clothing_items(*)))")
+        .select("planned_date, note, outfits(id, aesthetic, outfit_items(role, clothing_items(*)))")
         .eq("user_id", user!.id)
         .gte("planned_date", toISODate(weekDays[0]))
         .lte("planned_date", toISODate(weekDays[6])),
@@ -68,13 +70,13 @@ export default async function HomePage() {
   const monthDaysInGrid = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const startPad = (new Date(now.getFullYear(), now.getMonth(), 1).getDay() + 6) % 7;
 
-  const weekPlansByDate = new Map<string, { note: string | null; outfits: { aesthetic: string | null; outfit_items: { clothing_items: { id: string; name: string; category: string; primary_color: string; image_url: string | null } }[] } }>();
+  const weekPlansByDate = new Map<string, { note: string | null; outfits: { id: string; aesthetic: string | null; outfit_items: { clothing_items: ClothingItem }[] } }>();
   for (const p of weekPlans ?? []) {
     weekPlansByDate.set(p.planned_date, p as never);
   }
 
   return (
-    <div className="px-4 pt-6 pb-8 max-w-md mx-auto">
+    <div className="px-4 pt-6 pb-8 max-w-md md:max-w-2xl lg:max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <StatusIndicator label="SYSTEM ONLINE" />
         <p className="tech-label">{now.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase()}</p>
@@ -143,7 +145,7 @@ export default async function HomePage() {
         <span style={{ width: 4, height: 4, background: "var(--color-accent)" }} />
         <TechLabel>QUICK ACCESS</TechLabel>
       </div>
-      <div className="grid grid-cols-2 gap-2.5 mb-7">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-7">
         {[
           { href: "/wardrobe", icon: LayoutGrid, label: "WARDROBE", sub: "Browse all" },
           { href: "/generate", icon: Lock, label: "START WITH AN ITEM", sub: "Lock & style" },
@@ -227,66 +229,18 @@ export default async function HomePage() {
         </HUDPanel>
       )}
 
-      {/* Calendar preview */}
-      <div className="flex items-center justify-between mb-3">
-        <TechLabel>OUTFIT CALENDAR</TechLabel>
-        <Link href="/planner" className="tech-label" style={{ color: "var(--color-accent)" }}>VIEW →</Link>
-      </div>
-      <HUDPanel className="p-4 mb-7" brackets={false}>
-        <p className="text-xs mb-3">{now.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: startPad }, (_, i) => <div key={`pad-${i}`} />)}
-          {Array.from({ length: monthDaysInGrid }, (_, i) => {
-            const dayNum = i + 1;
-            const iso = toISODate(new Date(now.getFullYear(), now.getMonth(), dayNum));
-            const isToday = dayNum === now.getDate();
-            const hasPlan = plannedDaySet.has(iso);
-            return (
-              <div
-                key={iso}
-                className="aspect-square rounded flex items-center justify-center text-[10px] mono relative"
-                style={{
-                  background: isToday ? "var(--color-accent-dim)" : "transparent",
-                  border: isToday ? "1px solid var(--color-accent)" : "1px solid transparent",
-                  color: isToday ? "var(--color-accent)" : "var(--color-text-muted)",
-                }}
-              >
-                {dayNum}
-                {hasPlan && <span style={{ position: "absolute", bottom: 2, width: 3, height: 3, borderRadius: "50%", background: "var(--color-cyan)" }} />}
-              </div>
-            );
-          })}
-        </div>
-      </HUDPanel>
-
-      {/* Weekly planner preview */}
-      <div className="flex items-center justify-between mb-3">
-        <TechLabel>WEEKLY PLANNER</TechLabel>
-        <Link href="/planner" className="tech-label" style={{ color: "var(--color-accent)" }}>VIEW →</Link>
-      </div>
-      <div className="flex flex-col gap-2">
-        {weekDays.map((d) => {
-          const iso = toISODate(d);
-          const plan = weekPlansByDate.get(iso);
-          return (
-            <HUDPanel key={iso} className="p-2.5 flex items-center gap-3" brackets={false}>
-              <p className="tech-label" style={{ width: 34, flexShrink: 0 }}>{d.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}</p>
-              {plan ? (
-                <>
-                  <div className="flex gap-1">
-                    {plan.outfits?.outfit_items?.slice(0, 2).map((oi) => (
-                      <ClothingThumb key={oi.clothing_items.id} imageUrl={oi.clothing_items.image_url} name={oi.clothing_items.name} category={oi.clothing_items.category as never} color={oi.clothing_items.primary_color} size={28} />
-                    ))}
-                  </div>
-                  <p className="text-[11px] flex-1 truncate" style={{ color: "var(--color-text-muted)" }}>{plan.note ?? plan.outfits?.aesthetic ?? "Outfit"}</p>
-                </>
-              ) : (
-                <p className="text-[11px] flex-1" style={{ color: "var(--color-text-muted)", opacity: 0.5 }}>No outfit planned</p>
-              )}
-            </HUDPanel>
-          );
-        })}
-      </div>
+      <DashboardPlanner
+        year={now.getFullYear()}
+        month={now.getMonth()}
+        today={now.getDate()}
+        startPad={startPad}
+        daysInMonth={monthDaysInGrid}
+        plannedDates={[...plannedDaySet]}
+        weekDays={weekDays.map((d) => ({ iso: toISODate(d), label: d.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase() }))}
+        weekPlansByDate={Object.fromEntries(
+          [...weekPlansByDate.entries()].map(([iso, p]) => [iso, [{ id: iso, note: p.note, outfits: p.outfits }]])
+        )}
+      />
     </div>
   );
 }

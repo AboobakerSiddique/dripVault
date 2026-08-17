@@ -24,16 +24,8 @@ interface Plan {
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function toISODate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return d.toISOString().slice(0, 10);
 }
-
-
-
-
 function startOfWeek(d: Date): Date {
   const day = (d.getDay() + 6) % 7; // Monday = 0
   const start = new Date(d);
@@ -133,7 +125,7 @@ export default function PlannerClient() {
   };
 
   return (
-    <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+    <div className="px-4 pt-6 pb-4 max-w-md md:max-w-2xl lg:max-w-3xl mx-auto">
       <TechLabel className="mb-1">[ SCHEDULE MODULE ]</TechLabel>
       <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }} className="text-xl mb-4">
         OUTFIT PLANNER
@@ -169,7 +161,7 @@ export default function PlannerClient() {
       </div>
 
       {view === "week" ? (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5 md:grid md:grid-cols-2 md:gap-3">
           {weekDays.map((d) => {
             const iso = toISODate(d);
             const dayPlans = plansByDate.get(iso) ?? [];
@@ -234,16 +226,7 @@ export default function PlannerClient() {
           {selectedDate && (
             <HUDPanel className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm">
-  {(() => {
-    const [year, month, day] = selectedDate.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-  })()}
-</p>
+                <p className="text-sm">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
                 <button onClick={() => openPicker(selectedDate)}><Plus size={16} color="var(--color-accent)" /></button>
               </div>
               {(plansByDate.get(selectedDate) ?? []).length === 0 ? (
