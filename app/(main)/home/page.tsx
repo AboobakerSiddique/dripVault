@@ -11,7 +11,11 @@ import DashboardPlanner from "@/components/DashboardPlanner";
 import { ClothingItem } from "@/types/clothing";
 
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 function startOfWeek(d: Date) {
   const day = (d.getDay() + 6) % 7;
@@ -66,14 +70,16 @@ export default async function HomePage() {
     photoUrl = signed?.signedUrl ?? null;
   }
 
-  const plannedDaySet = new Set((monthPlans ?? []).map((p) => p.planned_date));
+  const plannedDaySet = new Set(
+  (monthPlans ?? []).map((p) => String(p.planned_date).slice(0, 10))
+);
   const monthDaysInGrid = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const startPad = (new Date(now.getFullYear(), now.getMonth(), 1).getDay() + 6) % 7;
 
   const weekPlansByDate = new Map<string, { note: string | null; outfits: { id: string; aesthetic: string | null; outfit_items: { clothing_items: ClothingItem }[] } }>();
   for (const p of weekPlans ?? []) {
-    weekPlansByDate.set(p.planned_date, p as never);
-  }
+  weekPlansByDate.set(String(p.planned_date).slice(0, 10), p as never);
+}
 
   return (
     <div className="px-4 pt-6 pb-8 max-w-md md:max-w-2xl lg:max-w-4xl mx-auto">

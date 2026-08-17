@@ -23,8 +23,22 @@ interface Plan {
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function formatDateLabel(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatISODate(d: Date) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 function startOfWeek(d: Date): Date {
   const day = (d.getDay() + 6) % 7; // Monday = 0
@@ -46,18 +60,25 @@ export default function PlannerClient() {
       const start = startOfWeek(anchor);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
-      return { from: toISODate(start), to: toISODate(end) };
+      return { from: formatISODate(start), to: formatISODate(end) };
     }
     const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
     const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
-    return { from: toISODate(start), to: toISODate(end) };
+    return { from: formatISODate(start), to: formatISODate(end) };
   }, [anchor, view]);
 
   const loadPlans = () => {
-    fetch(`/api/outfit-plans?from=${from}&to=${to}`)
-      .then((r) => r.json())
-      .then((data) => setPlans(data.plans ?? []));
-  };
+  fetch(`/api/outfit-plans?from=${from}&to=${to}`)
+    .then((r) => r.json())
+    .then((data) => {
+      const normalizedPlans = (data.plans ?? []).map((plan: Plan) => ({
+        ...plan,
+        planned_date: String(plan.planned_date).slice(0, 10),
+      }));
+
+      setPlans(normalizedPlans);
+    });
+};
 
   useEffect(() => {
     loadPlans();
@@ -163,7 +184,7 @@ export default function PlannerClient() {
       {view === "week" ? (
         <div className="flex flex-col gap-2.5 md:grid md:grid-cols-2 md:gap-3">
           {weekDays.map((d) => {
-            const iso = toISODate(d);
+            const iso = formatISODate(d);
             const dayPlans = plansByDate.get(iso) ?? [];
             return (
               <HUDPanel key={iso} className="p-3" brackets={false}>
@@ -204,7 +225,7 @@ export default function PlannerClient() {
           <div className="grid grid-cols-7 gap-1 mb-4">
             {monthDays.map((d, i) => {
               if (!d) return <div key={i} />;
-              const iso = toISODate(d);
+              const iso = formatISODate(d);
               const hasPlans = (plansByDate.get(iso)?.length ?? 0) > 0;
               return (
                 <button
@@ -226,7 +247,7 @@ export default function PlannerClient() {
           {selectedDate && (
             <HUDPanel className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+                <p className="text-sm">{formatDateLabel(selectedDate)}</p>
                 <button onClick={() => openPicker(selectedDate)}><Plus size={16} color="var(--color-accent)" /></button>
               </div>
               {(plansByDate.get(selectedDate) ?? []).length === 0 ? (

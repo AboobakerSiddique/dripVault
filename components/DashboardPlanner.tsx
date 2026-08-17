@@ -68,7 +68,7 @@ export default function DashboardPlanner({ year, month, today, startPad, daysInM
           {Array.from({ length: startPad }, (_, i) => <div key={`pad-${i}`} />)}
           {Array.from({ length: daysInMonth }, (_, i) => {
             const dayNum = i + 1;
-            const iso = new Date(year, month, dayNum).toISOString().slice(0, 10);
+            const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
             const isToday = dayNum === today;
             const isSelected = selectedDate === iso;
             const hasPlan = plannedSet.has(iso);
@@ -94,7 +94,18 @@ export default function DashboardPlanner({ year, month, today, startPad, daysInM
       {selectedDate && (
         <HUDPanel className="p-3 mb-7" brackets={false}>
           <div className="flex items-center justify-between mb-2">
-            <p className="tech-label">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }).toUpperCase()}</p>
+            <p className="tech-label">
+  {(() => {
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    return new Date(year, month - 1, day)
+      .toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+      .toUpperCase();
+  })()}
+</p>
             <Link href="/planner" className="flex items-center gap-1 tech-label" style={{ color: "var(--color-accent)" }}>
               <Plus size={11} /> ADD
             </Link>
